@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ICT Trading Platform</title>
+    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- SheetJS for Excel Export -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     
     <style>
@@ -64,7 +66,7 @@
 
         .dashboard {
             display: grid;
-            grid-template-columns: 420px 1fr;
+            grid-template-columns: 440px 1fr;
             gap: 25px;
         }
 
@@ -79,19 +81,19 @@
         }
 
         .log-panel h3 {
-            margin-bottom: 20px;
-            font-size: 1.2rem;
+            margin-bottom: 18px;
+            font-size: 1.15rem;
             border-bottom: 1px solid var(--border-color);
             padding-bottom: 10px;
         }
 
-        .form-row { display: flex; gap: 12px; margin-bottom: 12px; }
+        .form-row { display: flex; gap: 10px; margin-bottom: 10px; }
         .form-group { flex: 1; display: flex; flex-direction: column; width: 100%; }
         
         .form-group label {
-            font-size: 0.75rem;
+            font-size: 0.72rem;
             color: var(--text-muted);
-            margin-bottom: 6px;
+            margin-bottom: 5px;
             font-weight: 500;
         }
 
@@ -103,82 +105,85 @@
             padding: 8px 10px;
             border-radius: 6px;
             outline: none;
-            font-size: 0.85rem;
+            font-size: 0.82rem;
         }
 
         input:focus, select:focus, textarea:focus { border-color: var(--accent-gold); }
         input[type="date"]::-webkit-calendar-picker-indicator,
         input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); }
         input[readonly] { color: var(--accent-gold); font-weight: bold; background-color: rgba(244, 178, 65, 0.05); }
-        textarea { resize: vertical; min-height: 50px; }
+        textarea { resize: vertical; min-height: 48px; }
 
         .checkboxes {
-            display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;
-            margin: 5px 0 12px 0; background-color: var(--bg-input); padding: 10px;
+            display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px;
+            margin: 4px 0 10px 0; background-color: var(--bg-input); padding: 8px 10px;
             border-radius: 6px; border: 1px solid var(--border-color);
         }
-        .checkboxes label { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; cursor: pointer; }
+        .checkboxes label { display: flex; align-items: center; gap: 5px; font-size: 0.78rem; cursor: pointer; }
 
         .log-btn {
             background-color: var(--accent-gold); color: #000; border: none;
             padding: 12px; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 10px;
+            transition: opacity 0.2s;
         }
         .log-btn:hover { opacity: 0.9; }
-        .motivation { text-align: center; margin-top: 20px; font-size: 0.8rem; color: var(--accent-gold); letter-spacing: 3px; font-weight: 600; opacity: 0.7; text-transform: uppercase; }
+        .motivation { text-align: center; margin-top: 18px; font-size: 0.8rem; color: var(--accent-gold); letter-spacing: 3px; font-weight: 600; opacity: 0.7; text-transform: uppercase; }
 
         /* Right Panel */
         .right-panel { display: flex; flex-direction: column; gap: 20px; }
         
-        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; }
+        .stats-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
         .stat-card {
-            background-color: var(--bg-panel); padding: 15px; border-radius: 12px;
+            background-color: var(--bg-panel); padding: 14px 10px; border-radius: 12px;
             border: 1px solid var(--border-color); text-align: center;
         }
-        .stat-card h4 { color: var(--text-muted); font-size: 0.7rem; text-transform: uppercase; margin-bottom: 8px; }
-        .stat-card .value { font-size: 1.5rem; font-weight: bold; }
+        .stat-card h4 { color: var(--text-muted); font-size: 0.68rem; text-transform: uppercase; margin-bottom: 6px; }
+        .stat-card .value { font-size: 1.35rem; font-weight: bold; }
         .value.green { color: var(--accent-green); }
         .value.red { color: var(--accent-red); }
 
-        .progress-container { margin-top: 10px; background-color: var(--bg-input); border-radius: 20px; height: 6px; overflow: hidden; }
+        .progress-container { margin-top: 8px; background-color: var(--bg-input); border-radius: 20px; height: 6px; overflow: hidden; }
         .progress-bar { height: 100%; background-color: var(--accent-green); width: 0%; transition: width 0.5s; }
-        .progress-text { font-size: 0.7rem; color: var(--text-muted); margin-top: 6px; display: block; }
+        .progress-text { font-size: 0.68rem; color: var(--text-muted); margin-top: 5px; display: block; }
         .balance-reached { color: var(--accent-gold) !important; font-weight: bold; animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
 
         .ai-coach {
             background-color: rgba(244, 178, 65, 0.05); border: 1px solid var(--accent-gold);
-            padding: 15px; border-radius: 12px;
+            padding: 14px; border-radius: 12px;
         }
-        .ai-coach h4 { color: var(--accent-gold); margin-bottom: 8px; font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center;}
-        .ai-coach p { font-size: 0.85rem; color: #ddd; line-height: 1.4; }
-        .analyze-btn { background: transparent; border: 1px solid var(--accent-gold); color: var(--accent-gold); padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.7rem;}
+        .ai-coach h4 { color: var(--accent-gold); margin-bottom: 6px; font-size: 0.82rem; display: flex; justify-content: space-between; align-items: center;}
+        .ai-coach p { font-size: 0.82rem; color: #ddd; line-height: 1.4; }
+        .analyze-btn { background: transparent; border: 1px solid var(--accent-gold); color: var(--accent-gold); padding: 3px 8px; border-radius: 4px; cursor: pointer; font-size: 0.68rem;}
         .analyze-btn:hover { background: var(--accent-gold); color: #000; }
 
-        .chart-container { background-color: var(--bg-panel); border-radius: 12px; border: 1px solid var(--border-color); padding: 15px; height: 300px; }
+        .chart-container { background-color: var(--bg-panel); border-radius: 12px; border: 1px solid var(--border-color); padding: 15px; height: 280px; }
         
-        .table-container { background-color: var(--bg-panel); border-radius: 12px; border: 1px solid var(--border-color); padding: 20px; overflow-x: auto; max-height: 400px; overflow-y: auto;}
-        table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
-        th { text-align: left; color: var(--text-muted); padding-bottom: 10px; border-bottom: 1px solid var(--border-color); }
-        td { padding: 10px 0; border-bottom: 1px solid rgba(44, 44, 53, 0.5); }
+        .table-container { background-color: var(--bg-panel); border-radius: 12px; border: 1px solid var(--border-color); padding: 18px; overflow-x: auto; max-height: 420px; overflow-y: auto;}
+        table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+        th { text-align: left; color: var(--text-muted); padding-bottom: 8px; border-bottom: 1px solid var(--border-color); font-weight: 500; }
+        td { padding: 8px 0; border-bottom: 1px solid rgba(44, 44, 53, 0.5); }
         .text-green { color: var(--accent-green); }
         .text-red { color: var(--accent-red); }
-        .delete-btn { background-color: transparent; color: var(--accent-red); border: 1px solid var(--accent-red); padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.7rem;}
+        .delete-btn { background-color: transparent; color: var(--accent-red); border: 1px solid var(--accent-red); padding: 3px 6px; border-radius: 4px; cursor: pointer; font-size: 0.68rem;}
         .delete-btn:hover { background-color: var(--accent-red); color: #fff; }
     </style>
 </head>
 <body>
+
     <div class="header">
         <div>
             <h4>NY AM Session</h4>
             <h1>ICT TRADING PLATFORM</h1>
         </div>
-        <button class="export-btn" onclick="exportToExcel()">Export to Excel</button>
+        <button class="export-btn" onclick="exportToExcel()">Export to Excel (.xlsx)</button>
     </div>
 
     <div class="dashboard">
-        <!-- LEFT PANEL -->
+        <!-- LEFT PANEL: LOGGING -->
         <div class="log-panel">
             <h3>Log a Trade</h3>
+            
             <div class="form-row">
                 <div class="form-group">
                     <label>Date</label>
@@ -189,23 +194,78 @@
                     <input type="time" id="tTime">
                 </div>
                 <div class="form-group">
-                    <label>Asset</label>
-                    <input type="text" id="tAsset" value="MNQ">
+                    <label>Time Frame</label>
+                    <select id="tTf">
+                        <option>1m</option><option>5m</option><option>15m</option>
+                        <option>1H</option><option>4H</option><option>Daily</option>
+                    </select>
                 </div>
             </div>
 
             <div class="form-row">
                 <div class="form-group">
                     <label>Account Firm</label>
-                    <select id="tFirm"><option>Lucid</option><option>Topstep</option></select>
+                    <select id="tFirm">
+                        <option>Alpha</option>
+                        <option>Apex</option>
+                        <option>Topstep</option>
+                        <option>MFFU</option>
+                        <option>Lucid</option>
+                    </select>
                 </div>
                 <div class="form-group">
                     <label>Account Type</label>
                     <select id="tType"><option>Evaluation</option><option>Funded</option></select>
                 </div>
                 <div class="form-group">
-                    <label>Total Contracts</label>
+                    <label>Contracts / Size</label>
                     <input type="number" id="tContracts" placeholder="e.g. 5">
+                </div>
+            </div>
+
+            <!-- NEWS METRICS -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label>News Impact</label>
+                    <select id="tNewsImpact">
+                        <option>Low / None</option>
+                        <option>High Impact</option>
+                        <option>Medium Impact</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>What News Event?</label>
+                    <input type="text" id="tNewsEvent" placeholder="e.g. CPI, NFP, FOMC">
+                </div>
+                <div class="form-group">
+                    <label>Duration (Mins)</label>
+                    <input type="number" id="tDuration" placeholder="e.g. 15">
+                </div>
+            </div>
+
+            <!-- PSYCHOLOGY / EMOTIONS -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Emotion Before Trade</label>
+                    <select id="tEmotionBefore">
+                        <option>Calm / Focused</option>
+                        <option>Patient</option>
+                        <option>FOMO / Rushed</option>
+                        <option>Anxious</option>
+                        <option>Revenge Trading</option>
+                        <option>Overconfident</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Emotion After Trade</label>
+                    <select id="tEmotionAfter">
+                        <option>Disciplined</option>
+                        <option>Satisfied</option>
+                        <option>Frustrated</option>
+                        <option>Greedy</option>
+                        <option>Relieved</option>
+                        <option>Regretful</option>
+                    </select>
                 </div>
             </div>
 
@@ -213,21 +273,22 @@
                 <label><input type="checkbox" value="Sweep"> Sweep</label>
                 <label><input type="checkbox" value="iFVG"> iFVG</label>
                 <label><input type="checkbox" value="PD Array"> PD Array</label>
+                <label><input type="checkbox" value="BOS"> BOS</label>
                 <label><input type="checkbox" value="MSS"> MSS</label>
             </div>
 
             <div class="form-row">
                 <div class="form-group">
                     <label>Entry Price</label>
-                    <input type="number" id="entry" step="any">
+                    <input type="number" id="entry" step="any" placeholder="0.00">
                 </div>
                 <div class="form-group">
                     <label>Stop Loss</label>
-                    <input type="number" id="stop" step="any">
+                    <input type="number" id="stop" step="any" placeholder="0.00">
                 </div>
                 <div class="form-group">
                     <label>Final Exit</label>
-                    <input type="number" id="exit" step="any">
+                    <input type="number" id="exit" step="any" placeholder="0.00">
                 </div>
             </div>
 
@@ -237,35 +298,39 @@
                     <input type="text" id="tPartials" placeholder="e.g. 19850 (2), 19865 (1)">
                 </div>
                 <div class="form-group">
-                    <label>Duration (Mins)</label>
-                    <input type="number" id="tDuration" placeholder="e.g. 15">
-                </div>
-            </div>
-
-            <div class="form-row">
-                <div class="form-group">
                     <label>Profit/Loss ($)</label>
                     <input type="number" id="pnl" placeholder="e.g. 400 or -150">
                 </div>
                 <div class="form-group">
-                    <label>Realized RR</label>
+                    <label>Realized RR (Auto)</label>
                     <input type="text" id="rr" readonly placeholder="0.00 R">
+                </div>
+            </div>
+
+            <!-- REFLECTION / ANALYSIS -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Deep Analysis & Thought Process</label>
+                    <textarea id="tAnalysis" placeholder="What confirmed the entry?"></textarea>
                 </div>
             </div>
 
             <div class="form-row" style="margin-bottom:0;">
                 <div class="form-group">
-                    <label>Deep Analysis</label>
-                    <textarea id="tAnalysis" placeholder="What confirmed the entry? Did you respect your rules?"></textarea>
+                    <label>What Could Have Been Done Better?</label>
+                    <textarea id="tImprovement" placeholder="Did you rush? Did you follow your stop rules?"></textarea>
                 </div>
             </div>
 
             <button class="log-btn" onclick="logTrade()">Log Trade</button>
+
+            <!-- MOTIVATIONAL ANCHOR -->
             <div class="motivation">You are the 1%</div>
         </div>
 
         <!-- RIGHT PANEL -->
         <div class="right-panel">
+            <!-- STATS GRID -->
             <div class="stats-grid">
                 <div class="stat-card">
                     <h4>Total Trades</h4>
@@ -279,30 +344,40 @@
                     <h4>Net PNL</h4>
                     <div class="value" id="netPnl">$0</div>
                 </div>
+                <!-- DYNAMIC EVAL BALANCE CARD -->
                 <div class="stat-card">
-                    <h4 id="evalTitle">Evaluation Progress</h4>
+                    <h4>Account Balance</h4>
+                    <div class="value" id="accountBalance">$50,000</div>
+                </div>
+                <!-- EVAL PROGRESS TRACKER -->
+                <div class="stat-card">
+                    <h4 id="evalTitle">Eval Progress</h4>
                     <div class="progress-container"><div class="progress-bar" id="progressBar"></div></div>
                     <span class="progress-text" id="progressText">$0 / $3,000</span>
                 </div>
             </div>
 
-            <!-- AI COACH SECTION -->
+            <!-- LOCAL AI COACH -->
             <div class="ai-coach">
                 <h4>AI Trade Analysis <button class="analyze-btn" onclick="generateAIFeedback()">Run Analysis</button></h4>
-                <p id="aiOutput">Waiting for logs... Click "Run Analysis" to get feedback on your execution and discipline.</p>
+                <p id="aiOutput">Waiting for trade logs... Click "Run Analysis" to get feedback on psychology and market execution.</p>
             </div>
 
+            <!-- CHART -->
             <div class="chart-container">
                 <canvas id="pnlChart"></canvas>
             </div>
 
+            <!-- TABLE -->
             <div class="table-container">
                 <table>
                     <thead>
                         <tr>
                             <th>Date / Time</th>
+                            <th>Account</th>
+                            <th>News Impact</th>
+                            <th>Pre-Emotion</th>
                             <th>Setup</th>
-                            <th>Qty</th>
                             <th>RR</th>
                             <th>PNL</th>
                             <th>Action</th>
@@ -328,11 +403,11 @@
         }
         entryInput.addEventListener('input', calcRR); stopInput.addEventListener('input', calcRR); exitInput.addEventListener('input', calcRR);
 
-        // --- CORE DATA ENGINE (LocalStorage) ---
+        // Core Data Storage (LocalStorage)
         let tradesData = JSON.parse(localStorage.getItem('ictJournal')) || [];
         let pnlChartInstance = null;
 
-        function initDashboard() { renderDashboard(); }
+        const BASE_EVAL_BALANCE = 50000;
 
         function renderDashboard() {
             let totalPnl = 0, wins = 0;
@@ -350,16 +425,18 @@
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${trade.Date} ${trade.Time}</td>
-                    <td>${trade.Asset} - ${trade.Setups}</td>
-                    <td>${trade.Contracts}</td>
+                    <td>${trade.AccountFirm} (${trade.AccountType})</td>
+                    <td>${trade.NewsImpact} ${trade.NewsEvent ? '- ' + trade.NewsEvent : ''}</td>
+                    <td>${trade.EmotionBefore}</td>
+                    <td>${trade.Setups}</td>
                     <td>${trade.RR} R</td>
                     <td class="${trade.PNL >= 0 ? 'text-green' : 'text-red'}">${trade.PNL >= 0 ? '+$' : '-$'}${Math.abs(trade.PNL)}</td>
                     <td><button class="delete-btn" onclick="deleteTrade(${trade.id})">Remove</button></td>
                 `;
-                tbody.insertBefore(tr, tbody.firstChild); // Newest on top
+                tbody.insertBefore(tr, tbody.firstChild);
             });
 
-            // Update Stats
+            // Update Basic Stats
             document.getElementById('totalTrades').innerText = tradesData.length;
             document.getElementById('winRate').innerText = tradesData.length ? ((wins / tradesData.length) * 100).toFixed(0) + "%" : "0%";
             
@@ -367,7 +444,18 @@
             netEl.innerText = (totalPnl >= 0 ? "+$" : "-$") + Math.abs(totalPnl);
             netEl.className = totalPnl >= 0 ? "value green" : "value red";
 
-            // Update Eval Bar
+            // Update Account Balance Card (Red if below $50k on Eval, Green if above)
+            const currentBalance = BASE_EVAL_BALANCE + totalPnl;
+            const balanceEl = document.getElementById('accountBalance');
+            balanceEl.innerText = "$" + currentBalance.toLocaleString();
+            
+            if (currentBalance < BASE_EVAL_BALANCE) {
+                balanceEl.className = "value red";
+            } else {
+                balanceEl.className = "value green";
+            }
+
+            // Update Eval Progress Bar ($3K Pass Goal)
             let prog = (totalPnl / 3000) * 100;
             if(prog > 100) prog = 100; if(prog < 0) prog = 0;
             document.getElementById('progressBar').style.width = prog + "%";
@@ -378,8 +466,8 @@
                 document.getElementById('evalTitle').classList.add('balance-reached');
                 document.getElementById('progressBar').style.backgroundColor = "var(--accent-gold)";
             } else {
-                document.getElementById('progressText').innerText = "$" + totalPnl + " / $3000";
-                document.getElementById('evalTitle').innerText = "Evaluation Progress";
+                document.getElementById('progressText').innerText = "$" + totalPnl + " / $3,000";
+                document.getElementById('evalTitle').innerText = "Eval Progress";
                 document.getElementById('evalTitle').classList.remove('balance-reached');
                 document.getElementById('progressBar').style.backgroundColor = "var(--accent-green)";
             }
@@ -410,33 +498,39 @@
 
         function logTrade() {
             const pnlValue = parseFloat(document.getElementById('pnl').value);
-            if (isNaN(pnlValue)) { alert("Enter a valid PNL."); return; }
+            if (isNaN(pnlValue)) { alert("Please enter a valid Profit/Loss amount."); return; }
 
             const cbs = document.querySelectorAll('#setupCheckboxes input[type="checkbox"]:checked');
             const tags = Array.from(cbs).map(cb => cb.value).join(', ') || "None";
 
             const newTrade = {
-                id: Date.now(), // Unique ID for deleting
+                id: Date.now(),
                 Date: document.getElementById('tDate').value,
                 Time: document.getElementById('tTime').value || "--:--",
-                Asset: document.getElementById('tAsset').value || "MNQ",
-                Account: document.getElementById('tFirm').value + " " + document.getElementById('tType').value,
+                TimeFrame: document.getElementById('tTf').value,
+                AccountFirm: document.getElementById('tFirm').value,
+                AccountType: document.getElementById('tType').value,
                 Contracts: document.getElementById('tContracts').value || "1",
+                NewsImpact: document.getElementById('tNewsImpact').value,
+                NewsEvent: document.getElementById('tNewsEvent').value || "N/A",
+                EmotionBefore: document.getElementById('tEmotionBefore').value,
+                EmotionAfter: document.getElementById('tEmotionAfter').value,
                 Setups: tags,
                 Entry: entryInput.value, StopLoss: stopInput.value, Exit: exitInput.value,
                 Partials: document.getElementById('tPartials').value || "None",
-                Duration: document.getElementById('tDuration').value || "0",
+                DurationMins: document.getElementById('tDuration').value || "0",
                 RR: currentRR,
                 PNL: pnlValue,
-                Analysis: document.getElementById('tAnalysis').value
+                Analysis: document.getElementById('tAnalysis').value,
+                Improvement: document.getElementById('tImprovement').value
             };
 
             tradesData.push(newTrade);
             localStorage.setItem('ictJournal', JSON.stringify(tradesData));
             
-            // Clear form
-            document.getElementById('pnl').value = ""; document.getElementById('tAnalysis').value = "";
-            document.getElementById('tPartials').value = ""; document.getElementById('tDuration').value = "";
+            // Clear Form Inputs
+            document.getElementById('pnl').value = ""; document.getElementById('tAnalysis').value = ""; document.getElementById('tImprovement').value = "";
+            document.getElementById('tPartials').value = ""; document.getElementById('tDuration').value = ""; document.getElementById('tNewsEvent').value = "";
             entryInput.value = ""; stopInput.value = ""; exitInput.value = ""; rrOutput.value = "";
             cbs.forEach(cb => cb.checked = false);
 
@@ -450,45 +544,42 @@
         }
 
         function exportToExcel() {
-            if (tradesData.length === 0) { alert("No logs to export."); return; }
-            // Remove the unique ID before exporting so it looks clean
+            if (tradesData.length === 0) { alert("No logs available to export."); return; }
             const exportData = tradesData.map(({id, ...rest}) => rest);
             const ws = XLSX.utils.json_to_sheet(exportData);
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Journal");
-            XLSX.writeFile(wb, "ICT_History_Log.xlsx");
+            XLSX.utils.book_append_sheet(wb, ws, "Journal_Logs");
+            XLSX.writeFile(wb, "ICT_Trading_Platform_Logs.xlsx");
         }
 
-        // --- LOCAL AI COACH ---
+        // Local AI Coach with Emotion & News Analysis
         function generateAIFeedback() {
             if(tradesData.length < 3) {
-                document.getElementById('aiOutput').innerText = "Not enough data. Log at least 3 trades for accurate analysis.";
+                document.getElementById('aiOutput').innerText = "Log at least 3 trades to generate AI psychology and execution insights.";
                 return;
             }
-            let wins = 0, totalRR = 0, earlyCloses = 0;
+            let fomoCount = 0, highNewsCount = 0, totalPnl = 0;
             tradesData.forEach(t => {
-                if(t.PNL > 0) wins++;
-                totalRR += parseFloat(t.RR || 0);
-                if(parseFloat(t.RR) > 0 && parseFloat(t.RR) < 1) earlyCloses++;
+                totalPnl += t.PNL;
+                if(t.EmotionBefore.includes("FOMO") || t.EmotionBefore.includes("Revenge")) fomoCount++;
+                if(t.NewsImpact === "High Impact") highNewsCount++;
             });
-            const wr = (wins / tradesData.length);
-            const avgRR = (totalRR / tradesData.length);
-            
+
             let feedback = "";
-            if (avgRR < 1.2 && wr > 0.5) {
-                feedback = `Your win rate is solid (${(wr*100).toFixed(0)}%), but your average RR is too low (${avgRR.toFixed(2)} R). You are likely cutting your winners short. Trust the premium/discount array and hold for the draw on liquidity.`;
-            } else if (wr < 0.4) {
-                feedback = `You are taking too many paper cuts. Wait for obvious market structure shifts with displacement. Don't force setups just because the session opened.`;
-            } else if (earlyCloses >= 2) {
-                feedback = `I'm seeing multiple trades closed for less than 1R. If the setup is valid (iFVG + Sweep), let it breathe. Don't panic out at the first partial target.`;
+            if (fomoCount >= 2) {
+                feedback = `Warning: You logged pre-trade FOMO/Revenge emotions on ${fomoCount} trades. Step away from the chart when feeling rushed; wait for liquidity sweeps and displacement on higher timeframes.`;
+            } else if (highNewsCount >= 2 && totalPnl < 0) {
+                feedback = `High impact news events are negatively affecting your account. Consider staying on your hands during major release drivers like CPI/NFP and executing strictly on post-news liquidity sweeps.`;
+            } else if (totalPnl > 0) {
+                feedback = `Strong execution! Pre-trade emotions show discipline and risk control. Keep respecting your stop loss rules and holding for your liquidity targets. You are the 1%.`;
             } else {
-                feedback = `Execution is on point. Win rate and RR are in harmony. Keep scaling your contracts logically and stick to the model. You are the 1%.`;
+                feedback = `Focus on your trade reflections. Review the "What could have been done better" section for your losses to identify recurring technical mistakes.`;
             }
             document.getElementById('aiOutput').innerText = feedback;
         }
 
-        // Init on load
-        initDashboard();
+        // Initialize on page load
+        renderDashboard();
     </script>
 </body>
 </html>
