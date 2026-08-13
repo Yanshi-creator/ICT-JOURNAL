@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ICT Trading Platform</title>
-    <!-- Chart.js for the performance graph -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- SheetJS for local Excel Export -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     
     <style>
@@ -50,10 +48,7 @@
             margin-bottom: 5px;
         }
 
-        .header h1 {
-            font-size: 1.8rem;
-            letter-spacing: 1px;
-        }
+        .header h1 { font-size: 1.8rem; letter-spacing: 1px; }
 
         .export-btn {
             background-color: var(--accent-gold);
@@ -65,7 +60,6 @@
             cursor: pointer;
             transition: opacity 0.2s;
         }
-        
         .export-btn:hover { opacity: 0.9; }
 
         .dashboard {
@@ -74,7 +68,6 @@
             gap: 25px;
         }
 
-        /* Left Panel - Logging */
         .log-panel {
             background-color: var(--bg-panel);
             padding: 25px;
@@ -92,25 +85,14 @@
             padding-bottom: 10px;
         }
 
-        .form-row {
-            display: flex;
-            gap: 12px;
-            margin-bottom: 12px;
-        }
-
-        .form-group {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            width: 100%;
-        }
-
+        .form-row { display: flex; gap: 12px; margin-bottom: 12px; }
+        .form-group { flex: 1; display: flex; flex-direction: column; width: 100%; }
+        
         .form-group label {
             font-size: 0.75rem;
             color: var(--text-muted);
             margin-bottom: 6px;
             font-weight: 500;
-            white-space: nowrap;
         }
 
         input, select, textarea {
@@ -122,174 +104,81 @@
             border-radius: 6px;
             outline: none;
             font-size: 0.85rem;
-            transition: border-color 0.2s;
         }
 
         input:focus, select:focus, textarea:focus { border-color: var(--accent-gold); }
         input[type="date"]::-webkit-calendar-picker-indicator,
-        input[type="time"]::-webkit-calendar-picker-indicator {
-            filter: invert(1);
-        }
-
-        input[readonly] {
-            color: var(--accent-gold);
-            font-weight: bold;
-            background-color: rgba(244, 178, 65, 0.05);
-            cursor: not-allowed;
-        }
-
-        textarea { resize: vertical; min-height: 60px; }
+        input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); }
+        input[readonly] { color: var(--accent-gold); font-weight: bold; background-color: rgba(244, 178, 65, 0.05); }
+        textarea { resize: vertical; min-height: 50px; }
 
         .checkboxes {
-            display: flex;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin: 5px 0 12px 0;
-            background-color: var(--bg-input);
-            padding: 10px;
-            border-radius: 6px;
-            border: 1px solid var(--border-color);
+            display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+            margin: 5px 0 12px 0; background-color: var(--bg-input); padding: 10px;
+            border-radius: 6px; border: 1px solid var(--border-color);
         }
-
-        .checkboxes label {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 0.8rem;
-            cursor: pointer;
-            user-select: none;
-        }
+        .checkboxes label { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; cursor: pointer; }
 
         .log-btn {
-            background-color: var(--accent-gold);
-            color: #000;
-            border: none;
-            padding: 12px;
-            border-radius: 6px;
-            font-weight: bold;
-            font-size: 0.95rem;
-            cursor: pointer;
-            margin-top: 10px;
-            transition: all 0.2s;
-            width: 100%;
+            background-color: var(--accent-gold); color: #000; border: none;
+            padding: 12px; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 10px;
         }
+        .log-btn:hover { opacity: 0.9; }
+        .motivation { text-align: center; margin-top: 20px; font-size: 0.8rem; color: var(--accent-gold); letter-spacing: 3px; font-weight: 600; opacity: 0.7; text-transform: uppercase; }
 
-        .log-btn:hover { opacity: 0.9; transform: translateY(-1px); }
-
-        .motivation {
-            text-align: center;
-            margin-top: 20px;
-            font-size: 0.8rem;
-            color: var(--accent-gold);
-            letter-spacing: 3px;
-            font-weight: 600;
-            opacity: 0.7;
-            text-transform: uppercase;
-        }
-
-        /* Right Panel - Stats & Visuals */
+        /* Right Panel */
         .right-panel { display: flex; flex-direction: column; gap: 20px; }
         
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 15px;
-        }
-
+        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; }
         .stat-card {
-            background-color: var(--bg-panel);
-            padding: 20px;
-            border-radius: 12px;
-            border: 1px solid var(--border-color);
-            text-align: center;
+            background-color: var(--bg-panel); padding: 15px; border-radius: 12px;
+            border: 1px solid var(--border-color); text-align: center;
         }
-
-        .stat-card h4 {
-            color: var(--text-muted);
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            margin-bottom: 10px;
-            letter-spacing: 0.5px;
-        }
-
-        .stat-card .value { font-size: 1.8rem; font-weight: bold; }
+        .stat-card h4 { color: var(--text-muted); font-size: 0.7rem; text-transform: uppercase; margin-bottom: 8px; }
+        .stat-card .value { font-size: 1.5rem; font-weight: bold; }
         .value.green { color: var(--accent-green); }
         .value.red { color: var(--accent-red); }
 
-        /* Progress Bar */
-        .progress-container {
-            margin-top: 12px;
-            background-color: var(--bg-input);
-            border-radius: 20px;
-            height: 8px;
-            width: 100%;
-            overflow: hidden;
-        }
-        .progress-bar {
-            height: 100%;
-            background-color: var(--accent-green);
-            width: 0%;
-            transition: width 0.5s ease-in-out, background-color 0.5s;
-        }
-        .progress-text {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            margin-top: 8px;
-            display: block;
-            font-weight: 500;
-        }
+        .progress-container { margin-top: 10px; background-color: var(--bg-input); border-radius: 20px; height: 6px; overflow: hidden; }
+        .progress-bar { height: 100%; background-color: var(--accent-green); width: 0%; transition: width 0.5s; }
+        .progress-text { font-size: 0.7rem; color: var(--text-muted); margin-top: 6px; display: block; }
         .balance-reached { color: var(--accent-gold) !important; font-weight: bold; animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
 
-        /* Chart & Table Panels */
-        .chart-container {
-            background-color: var(--bg-panel);
-            border-radius: 12px;
-            border: 1px solid var(--border-color);
-            padding: 20px;
-            height: 350px;
+        .ai-coach {
+            background-color: rgba(244, 178, 65, 0.05); border: 1px solid var(--accent-gold);
+            padding: 15px; border-radius: 12px;
         }
+        .ai-coach h4 { color: var(--accent-gold); margin-bottom: 8px; font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center;}
+        .ai-coach p { font-size: 0.85rem; color: #ddd; line-height: 1.4; }
+        .analyze-btn { background: transparent; border: 1px solid var(--accent-gold); color: var(--accent-gold); padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.7rem;}
+        .analyze-btn:hover { background: var(--accent-gold); color: #000; }
 
-        .table-container {
-            background-color: var(--bg-panel);
-            border-radius: 12px;
-            border: 1px solid var(--border-color);
-            padding: 20px;
-            overflow-x: auto;
-        }
+        .chart-container { background-color: var(--bg-panel); border-radius: 12px; border: 1px solid var(--border-color); padding: 15px; height: 300px; }
         
-        .table-container h4 {
-            color: var(--text-muted);
-            font-size: 0.8rem;
-            text-transform: uppercase;
-            margin-bottom: 15px;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 10px;
-        }
-
-        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-        th { text-align: left; color: var(--text-muted); padding-bottom: 10px; font-weight: 500; border-bottom: 1px solid var(--border-color); }
-        td { padding: 12px 0; border-bottom: 1px solid rgba(44, 44, 53, 0.5); }
+        .table-container { background-color: var(--bg-panel); border-radius: 12px; border: 1px solid var(--border-color); padding: 20px; overflow-x: auto; max-height: 400px; overflow-y: auto;}
+        table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+        th { text-align: left; color: var(--text-muted); padding-bottom: 10px; border-bottom: 1px solid var(--border-color); }
+        td { padding: 10px 0; border-bottom: 1px solid rgba(44, 44, 53, 0.5); }
         .text-green { color: var(--accent-green); }
         .text-red { color: var(--accent-red); }
+        .delete-btn { background-color: transparent; color: var(--accent-red); border: 1px solid var(--accent-red); padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.7rem;}
+        .delete-btn:hover { background-color: var(--accent-red); color: #fff; }
     </style>
 </head>
 <body>
-
     <div class="header">
         <div>
             <h4>NY AM Session</h4>
             <h1>ICT TRADING PLATFORM</h1>
         </div>
-        <button class="export-btn" onclick="exportToExcel()">Export to Excel (.xlsx)</button>
+        <button class="export-btn" onclick="exportToExcel()">Export to Excel</button>
     </div>
 
     <div class="dashboard">
-        <!-- LEFT PANEL: LOGGING -->
+        <!-- LEFT PANEL -->
         <div class="log-panel">
             <h3>Log a Trade</h3>
-            
             <div class="form-row">
                 <div class="form-group">
                     <label>Date</label>
@@ -300,25 +189,22 @@
                     <input type="time" id="tTime">
                 </div>
                 <div class="form-group">
-                    <label>Time Frame</label>
-                    <select id="tTf">
-                        <option>1m</option><option>5m</option><option>15m</option>
-                        <option>1H</option><option>4H</option><option>Daily</option>
-                    </select>
+                    <label>Asset</label>
+                    <input type="text" id="tAsset" value="MNQ">
                 </div>
             </div>
 
             <div class="form-row">
                 <div class="form-group">
                     <label>Account Firm</label>
-                    <select id="tFirm"><option>Lucid</option><option>Topstep</option><option>Apex</option></select>
+                    <select id="tFirm"><option>Lucid</option><option>Topstep</option></select>
                 </div>
                 <div class="form-group">
                     <label>Account Type</label>
                     <select id="tType"><option>Evaluation</option><option>Funded</option></select>
                 </div>
                 <div class="form-group">
-                    <label>Contracts / Size</label>
+                    <label>Total Contracts</label>
                     <input type="number" id="tContracts" placeholder="e.g. 5">
                 </div>
             </div>
@@ -327,31 +213,31 @@
                 <label><input type="checkbox" value="Sweep"> Sweep</label>
                 <label><input type="checkbox" value="iFVG"> iFVG</label>
                 <label><input type="checkbox" value="PD Array"> PD Array</label>
-                <label><input type="checkbox" value="BOS"> BOS</label>
+                <label><input type="checkbox" value="MSS"> MSS</label>
             </div>
 
             <div class="form-row">
                 <div class="form-group">
                     <label>Entry Price</label>
-                    <input type="number" id="entry" step="any" placeholder="0.00">
+                    <input type="number" id="entry" step="any">
                 </div>
                 <div class="form-group">
                     <label>Stop Loss</label>
-                    <input type="number" id="stop" step="any" placeholder="0.00">
+                    <input type="number" id="stop" step="any">
                 </div>
                 <div class="form-group">
                     <label>Final Exit</label>
-                    <input type="number" id="exit" step="any" placeholder="0.00">
+                    <input type="number" id="exit" step="any">
                 </div>
             </div>
 
             <div class="form-row">
                 <div class="form-group">
-                    <label>Partials Taken (Prices)</label>
-                    <input type="text" id="tPartials" placeholder="e.g. 19850, 19865">
+                    <label>Partials (Price x Qty)</label>
+                    <input type="text" id="tPartials" placeholder="e.g. 19850 (2), 19865 (1)">
                 </div>
                 <div class="form-group">
-                    <label>Duration (Minutes)</label>
+                    <label>Duration (Mins)</label>
                     <input type="number" id="tDuration" placeholder="e.g. 15">
                 </div>
             </div>
@@ -362,27 +248,24 @@
                     <input type="number" id="pnl" placeholder="e.g. 400 or -150">
                 </div>
                 <div class="form-group">
-                    <label>Average RR (Auto)</label>
+                    <label>Realized RR</label>
                     <input type="text" id="rr" readonly placeholder="0.00 R">
                 </div>
             </div>
 
             <div class="form-row" style="margin-bottom:0;">
                 <div class="form-group">
-                    <label>Deep Analysis / Thought Process</label>
-                    <textarea id="tAnalysis" placeholder="What confirmed the entry? (Liquidity sweeps, market structure shifts, etc.)"></textarea>
+                    <label>Deep Analysis</label>
+                    <textarea id="tAnalysis" placeholder="What confirmed the entry? Did you respect your rules?"></textarea>
                 </div>
             </div>
 
             <button class="log-btn" onclick="logTrade()">Log Trade</button>
-
-            <!-- MOTIVATIONAL ANCHOR -->
             <div class="motivation">You are the 1%</div>
         </div>
 
         <!-- RIGHT PANEL -->
         <div class="right-panel">
-            <!-- STATS -->
             <div class="stats-grid">
                 <div class="stat-card">
                     <h4>Total Trades</h4>
@@ -396,236 +279,216 @@
                     <h4>Net PNL</h4>
                     <div class="value" id="netPnl">$0</div>
                 </div>
-                <!-- EVAL TRACKER -->
                 <div class="stat-card">
                     <h4 id="evalTitle">Evaluation Progress</h4>
-                    <div class="progress-container">
-                        <div class="progress-bar" id="progressBar"></div>
-                    </div>
+                    <div class="progress-container"><div class="progress-bar" id="progressBar"></div></div>
                     <span class="progress-text" id="progressText">$0 / $3,000</span>
                 </div>
             </div>
 
-            <!-- DYNAMIC CHART -->
+            <!-- AI COACH SECTION -->
+            <div class="ai-coach">
+                <h4>AI Trade Analysis <button class="analyze-btn" onclick="generateAIFeedback()">Run Analysis</button></h4>
+                <p id="aiOutput">Waiting for logs... Click "Run Analysis" to get feedback on your execution and discipline.</p>
+            </div>
+
             <div class="chart-container">
                 <canvas id="pnlChart"></canvas>
             </div>
 
-            <!-- TRADE HISTORY TABLE -->
             <div class="table-container">
-                <h4>Trade History</h4>
                 <table>
                     <thead>
                         <tr>
                             <th>Date / Time</th>
-                            <th>Account</th>
-                            <th>Setup Tags</th>
-                            <th>Contracts</th>
-                            <th>Duration</th>
+                            <th>Setup</th>
+                            <th>Qty</th>
                             <th>RR</th>
-                            <th>Net PNL</th>
+                            <th>PNL</th>
+                            <th>Action</th>
                         </tr>
                     </thead>
-                    <tbody id="historyTableBody">
-                        <!-- Rows injected here -->
-                    </tbody>
+                    <tbody id="historyTableBody"></tbody>
                 </table>
             </div>
         </div>
     </div>
 
-    <!-- JAVASCRIPT LOGIC -->
     <script>
-        // Set today's date automatically
         document.getElementById('tDate').valueAsDate = new Date();
+        const entryInput = document.getElementById('entry'), stopInput = document.getElementById('stop'), exitInput = document.getElementById('exit'), rrOutput = document.getElementById('rr');
+        let currentRR = 0;
 
-        // 1. Auto Calculate RR Logic
-        const entryInput = document.getElementById('entry');
-        const stopInput = document.getElementById('stop');
-        const exitInput = document.getElementById('exit');
-        const rrOutput = document.getElementById('rr');
-        let currentCalculatedRR = 0;
-
-        function calculateRR() {
-            const entry = parseFloat(entryInput.value);
-            const stop = parseFloat(stopInput.value);
-            const exit = parseFloat(exitInput.value);
-
-            if (!isNaN(entry) && !isNaN(stop) && !isNaN(exit)) {
-                const risk = Math.abs(entry - stop);
-                const reward = Math.abs(exit - entry);
-
-                if (risk > 0) {
-                    currentCalculatedRR = (reward / risk).toFixed(2);
-                    rrOutput.value = currentCalculatedRR + " R";
-                }
-            } else {
-                rrOutput.value = "";
-                currentCalculatedRR = 0;
-            }
+        function calcRR() {
+            const ent = parseFloat(entryInput.value), stp = parseFloat(stopInput.value), ext = parseFloat(exitInput.value);
+            if (!isNaN(ent) && !isNaN(stp) && !isNaN(ext)) {
+                const risk = Math.abs(ent - stp), rew = Math.abs(ext - ent);
+                if (risk > 0) { currentRR = (rew / risk).toFixed(2); rrOutput.value = currentRR + " R"; }
+            } else { rrOutput.value = ""; currentRR = 0; }
         }
-        entryInput.addEventListener('input', calculateRR);
-        stopInput.addEventListener('input', calculateRR);
-        exitInput.addEventListener('input', calculateRR);
+        entryInput.addEventListener('input', calcRR); stopInput.addEventListener('input', calcRR); exitInput.addEventListener('input', calcRR);
 
-        // 2. Global State for Trade Tracker
-        let tradesData = [];
-        let currentTotalPnl = 0;
-        let winningTrades = 0;
-        const targetGoal = 3000;
-        let cumulativePnlHistory = [0]; // Starts at 0 for the chart
-        let tradeLabels = ["Start"];
+        // --- CORE DATA ENGINE (LocalStorage) ---
+        let tradesData = JSON.parse(localStorage.getItem('ictJournal')) || [];
+        let pnlChartInstance = null;
 
-        // 3. Initialize Chart.js
-        const ctx = document.getElementById('pnlChart').getContext('2d');
-        const pnlChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: tradeLabels,
-                datasets: [{
-                    label: 'Cumulative PNL ($)',
-                    data: cumulativePnlHistory,
-                    borderColor: '#4caf50',
-                    backgroundColor: 'rgba(76, 175, 80, 0.1)',
-                    borderWidth: 2,
-                    fill: true,
-                    tension: 0.3
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false }
-                },
-                scales: {
-                    x: { ticks: { color: '#888890' }, grid: { color: '#2c2c35' } },
-                    y: { ticks: { color: '#888890' }, grid: { color: '#2c2c35' } }
-                }
+        function initDashboard() { renderDashboard(); }
+
+        function renderDashboard() {
+            let totalPnl = 0, wins = 0;
+            let chartData = [0], chartLabels = ["Start"];
+            const tbody = document.getElementById('historyTableBody');
+            tbody.innerHTML = '';
+
+            tradesData.forEach((trade, index) => {
+                totalPnl += trade.PNL;
+                if(trade.PNL > 0) wins++;
+                
+                chartData.push(totalPnl);
+                chartLabels.push("T" + (index + 1));
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${trade.Date} ${trade.Time}</td>
+                    <td>${trade.Asset} - ${trade.Setups}</td>
+                    <td>${trade.Contracts}</td>
+                    <td>${trade.RR} R</td>
+                    <td class="${trade.PNL >= 0 ? 'text-green' : 'text-red'}">${trade.PNL >= 0 ? '+$' : '-$'}${Math.abs(trade.PNL)}</td>
+                    <td><button class="delete-btn" onclick="deleteTrade(${trade.id})">Remove</button></td>
+                `;
+                tbody.insertBefore(tr, tbody.firstChild); // Newest on top
+            });
+
+            // Update Stats
+            document.getElementById('totalTrades').innerText = tradesData.length;
+            document.getElementById('winRate').innerText = tradesData.length ? ((wins / tradesData.length) * 100).toFixed(0) + "%" : "0%";
+            
+            const netEl = document.getElementById('netPnl');
+            netEl.innerText = (totalPnl >= 0 ? "+$" : "-$") + Math.abs(totalPnl);
+            netEl.className = totalPnl >= 0 ? "value green" : "value red";
+
+            // Update Eval Bar
+            let prog = (totalPnl / 3000) * 100;
+            if(prog > 100) prog = 100; if(prog < 0) prog = 0;
+            document.getElementById('progressBar').style.width = prog + "%";
+            
+            if(totalPnl >= 3000) {
+                document.getElementById('progressText').innerText = "Target Hit!";
+                document.getElementById('evalTitle').innerText = "BALANCE REACHED";
+                document.getElementById('evalTitle').classList.add('balance-reached');
+                document.getElementById('progressBar').style.backgroundColor = "var(--accent-gold)";
+            } else {
+                document.getElementById('progressText').innerText = "$" + totalPnl + " / $3000";
+                document.getElementById('evalTitle').innerText = "Evaluation Progress";
+                document.getElementById('evalTitle').classList.remove('balance-reached');
+                document.getElementById('progressBar').style.backgroundColor = "var(--accent-green)";
             }
-        });
 
-        // 4. Log Trade Execution
+            // Render Chart
+            renderChart(chartLabels, chartData, totalPnl);
+        }
+
+        function renderChart(labels, data, totalPnl) {
+            const ctx = document.getElementById('pnlChart').getContext('2d');
+            if(pnlChartInstance) pnlChartInstance.destroy();
+            
+            pnlChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Net PNL',
+                        data: data,
+                        borderColor: totalPnl >= 0 ? '#4caf50' : '#f44336',
+                        backgroundColor: totalPnl >= 0 ? 'rgba(76, 175, 80, 0.1)' : 'rgba(244, 67, 54, 0.1)',
+                        borderWidth: 2, fill: true, tension: 0.3
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { grid: { color: '#2c2c35' } } } }
+            });
+        }
+
         function logTrade() {
             const pnlValue = parseFloat(document.getElementById('pnl').value);
-            if (isNaN(pnlValue)) {
-                alert("Please enter a valid Profit/Loss amount.");
-                return;
-            }
+            if (isNaN(pnlValue)) { alert("Enter a valid PNL."); return; }
 
-            // Gather Tags
-            const checkboxes = document.querySelectorAll('#setupCheckboxes input[type="checkbox"]:checked');
-            let tags = Array.from(checkboxes).map(cb => cb.value).join(', ');
-            if (tags === "") tags = "None";
+            const cbs = document.querySelectorAll('#setupCheckboxes input[type="checkbox"]:checked');
+            const tags = Array.from(cbs).map(cb => cb.value).join(', ') || "None";
 
-            // Build Trade Object (for Excel and Table)
-            const tradeObj = {
+            const newTrade = {
+                id: Date.now(), // Unique ID for deleting
                 Date: document.getElementById('tDate').value,
                 Time: document.getElementById('tTime').value || "--:--",
-                TimeFrame: document.getElementById('tTf').value,
-                AccountFirm: document.getElementById('tFirm').value,
-                AccountType: document.getElementById('tType').value,
+                Asset: document.getElementById('tAsset').value || "MNQ",
+                Account: document.getElementById('tFirm').value + " " + document.getElementById('tType').value,
                 Contracts: document.getElementById('tContracts').value || "1",
                 Setups: tags,
-                Entry: entryInput.value,
-                StopLoss: stopInput.value,
-                Exit: exitInput.value,
+                Entry: entryInput.value, StopLoss: stopInput.value, Exit: exitInput.value,
                 Partials: document.getElementById('tPartials').value || "None",
-                DurationMins: document.getElementById('tDuration').value || "0",
-                RR: currentCalculatedRR,
+                Duration: document.getElementById('tDuration').value || "0",
+                RR: currentRR,
                 PNL: pnlValue,
                 Analysis: document.getElementById('tAnalysis').value
             };
-            tradesData.push(tradeObj);
 
-            // Update Stats
-            currentTotalPnl += pnlValue;
-            if (pnlValue > 0) winningTrades++;
+            tradesData.push(newTrade);
+            localStorage.setItem('ictJournal', JSON.stringify(tradesData));
             
-            document.getElementById('totalTrades').innerText = tradesData.length;
-            
-            const winRatePercent = ((winningTrades / tradesData.length) * 100).toFixed(0);
-            document.getElementById('winRate').innerText = winRatePercent + "%";
+            // Clear form
+            document.getElementById('pnl').value = ""; document.getElementById('tAnalysis').value = "";
+            document.getElementById('tPartials').value = ""; document.getElementById('tDuration').value = "";
+            entryInput.value = ""; stopInput.value = ""; exitInput.value = ""; rrOutput.value = "";
+            cbs.forEach(cb => cb.checked = false);
 
-            const netPnlEl = document.getElementById('netPnl');
-            netPnlEl.innerText = (currentTotalPnl >= 0 ? "+$" : "-$") + Math.abs(currentTotalPnl);
-            netPnlEl.className = currentTotalPnl >= 0 ? "value green" : "value red";
-
-            // Update Evaluation Progress
-            let progressPercentage = (currentTotalPnl / targetGoal) * 100;
-            if(progressPercentage > 100) progressPercentage = 100;
-            if(progressPercentage < 0) progressPercentage = 0;
-
-            const progressBar = document.getElementById('progressBar');
-            const progressText = document.getElementById('progressText');
-            const evalTitle = document.getElementById('evalTitle');
-
-            progressBar.style.width = progressPercentage + "%";
-
-            if(currentTotalPnl >= targetGoal) {
-                progressText.innerText = "Target Hit!";
-                progressText.classList.add("balance-reached");
-                evalTitle.innerText = "BALANCE REACHED";
-                evalTitle.classList.add("balance-reached");
-                progressBar.style.backgroundColor = "var(--accent-gold)";
-            } else {
-                progressText.innerText = "$" + currentTotalPnl + " / $" + targetGoal;
-                progressText.classList.remove("balance-reached");
-                evalTitle.innerText = "Evaluation Progress";
-                evalTitle.classList.remove("balance-reached");
-                progressBar.style.backgroundColor = "var(--accent-green)";
-            }
-
-            // Update Chart
-            cumulativePnlHistory.push(currentTotalPnl);
-            tradeLabels.push("T" + tradesData.length);
-            
-            // Change chart color based on overall profitability
-            pnlChart.data.datasets[0].borderColor = currentTotalPnl >= 0 ? '#4caf50' : '#f44336';
-            pnlChart.data.datasets[0].backgroundColor = currentTotalPnl >= 0 ? 'rgba(76, 175, 80, 0.1)' : 'rgba(244, 67, 54, 0.1)';
-            pnlChart.update();
-
-            // Update History Table
-            const tbody = document.getElementById('historyTableBody');
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${tradeObj.Date} ${tradeObj.Time}</td>
-                <td>${tradeObj.AccountFirm} (${tradeObj.AccountType})</td>
-                <td>${tradeObj.Setups}</td>
-                <td>${tradeObj.Contracts}</td>
-                <td>${tradeObj.DurationMins}m</td>
-                <td>${tradeObj.RR} R</td>
-                <td class="${pnlValue >= 0 ? 'text-green' : 'text-red'}">${pnlValue >= 0 ? '+$' : '-$'}${Math.abs(pnlValue)}</td>
-            `;
-            // Insert at top of table
-            tbody.insertBefore(row, tbody.firstChild);
-
-            // Optional: Clear form after logging (uncomment to enable)
-            /*
-            document.getElementById('pnl').value = "";
-            document.getElementById('tAnalysis').value = "";
-            entryInput.value = ""; stopInput.value = ""; exitInput.value = ""; 
-            rrOutput.value = ""; currentCalculatedRR = 0;
-            document.getElementById('tPartials').value = "";
-            document.getElementById('tDuration').value = "";
-            checkboxes.forEach(cb => cb.checked = false);
-            */
+            renderDashboard();
         }
 
-        // 5. Export to Excel Logic (using SheetJS)
+        function deleteTrade(id) {
+            tradesData = tradesData.filter(trade => trade.id !== id);
+            localStorage.setItem('ictJournal', JSON.stringify(tradesData));
+            renderDashboard();
+        }
+
         function exportToExcel() {
-            if (tradesData.length === 0) {
-                alert("No trades logged to export.");
+            if (tradesData.length === 0) { alert("No logs to export."); return; }
+            // Remove the unique ID before exporting so it looks clean
+            const exportData = tradesData.map(({id, ...rest}) => rest);
+            const ws = XLSX.utils.json_to_sheet(exportData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Journal");
+            XLSX.writeFile(wb, "ICT_History_Log.xlsx");
+        }
+
+        // --- LOCAL AI COACH ---
+        function generateAIFeedback() {
+            if(tradesData.length < 3) {
+                document.getElementById('aiOutput').innerText = "Not enough data. Log at least 3 trades for accurate analysis.";
                 return;
             }
-            // Convert JSON to worksheet
-            const ws = XLSX.utils.json_to_sheet(tradesData);
-            // Create a new workbook
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "ICT_Trades");
-            // Trigger file download
-            XLSX.writeFile(wb, "ICT_Trading_Journal.xlsx");
+            let wins = 0, totalRR = 0, earlyCloses = 0;
+            tradesData.forEach(t => {
+                if(t.PNL > 0) wins++;
+                totalRR += parseFloat(t.RR || 0);
+                if(parseFloat(t.RR) > 0 && parseFloat(t.RR) < 1) earlyCloses++;
+            });
+            const wr = (wins / tradesData.length);
+            const avgRR = (totalRR / tradesData.length);
+            
+            let feedback = "";
+            if (avgRR < 1.2 && wr > 0.5) {
+                feedback = `Your win rate is solid (${(wr*100).toFixed(0)}%), but your average RR is too low (${avgRR.toFixed(2)} R). You are likely cutting your winners short. Trust the premium/discount array and hold for the draw on liquidity.`;
+            } else if (wr < 0.4) {
+                feedback = `You are taking too many paper cuts. Wait for obvious market structure shifts with displacement. Don't force setups just because the session opened.`;
+            } else if (earlyCloses >= 2) {
+                feedback = `I'm seeing multiple trades closed for less than 1R. If the setup is valid (iFVG + Sweep), let it breathe. Don't panic out at the first partial target.`;
+            } else {
+                feedback = `Execution is on point. Win rate and RR are in harmony. Keep scaling your contracts logically and stick to the model. You are the 1%.`;
+            }
+            document.getElementById('aiOutput').innerText = feedback;
         }
+
+        // Init on load
+        initDashboard();
     </script>
 </body>
 </html>
