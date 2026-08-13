@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ICT Trading Platform</title>
+    <title>ICT Trading Platform - Multi-Account</title>
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- SheetJS for Excel Export -->
@@ -51,6 +51,32 @@
         }
 
         .header h1 { font-size: 1.8rem; letter-spacing: 1px; }
+
+        .header-actions { display: flex; gap: 12px; align-items: center; }
+
+        .account-switcher {
+            background-color: var(--bg-panel);
+            border: 1px solid var(--accent-gold);
+            color: var(--accent-gold);
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .btn-secondary {
+            background-color: var(--bg-panel);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            padding: 10px 16px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-secondary:hover { border-color: var(--accent-gold); color: var(--accent-gold); }
 
         .export-btn {
             background-color: var(--accent-gold);
@@ -132,16 +158,17 @@
         /* Right Panel */
         .right-panel { display: flex; flex-direction: column; gap: 20px; }
         
-        /* Portfolio Settings Strip */
-        .settings-strip {
+        /* Account Config Box */
+        .account-config-box {
             display: flex;
             gap: 15px;
             background-color: var(--bg-panel);
             padding: 15px;
             border-radius: 12px;
             border: 1px solid var(--border-color);
+            align-items: flex-end;
         }
-        
+
         .stats-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
         .stat-card {
             background-color: var(--bg-panel); padding: 14px 10px; border-radius: 12px;
@@ -177,6 +204,17 @@
         .text-red { color: var(--accent-red); }
         .delete-btn { background-color: transparent; color: var(--accent-red); border: 1px solid var(--accent-red); padding: 3px 6px; border-radius: 4px; cursor: pointer; font-size: 0.68rem;}
         .delete-btn:hover { background-color: var(--accent-red); color: #fff; }
+
+        /* Modal styling */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 1000;
+        }
+        .modal {
+            background-color: var(--bg-panel); border: 1px solid var(--border-color);
+            padding: 25px; border-radius: 12px; width: 380px; display: flex; flex-direction: column; gap: 15px;
+        }
+        .modal h3 { border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
     </style>
 </head>
 <body>
@@ -186,13 +224,20 @@
             <h4>NY AM Session</h4>
             <h1>ICT TRADING PLATFORM</h1>
         </div>
-        <button class="export-btn" onclick="exportToExcel()">Export to Excel (.xlsx)</button>
+        <div class="header-actions">
+            <!-- ACCOUNT SWITCHER -->
+            <select id="accountSelect" class="account-switcher" onchange="switchAccount()">
+                <!-- Populated dynamically -->
+            </select>
+            <button class="btn-secondary" onclick="openAddAccountModal()">+ New Account</button>
+            <button class="export-btn" onclick="exportToExcel()">Export to Excel (.xlsx)</button>
+        </div>
     </div>
 
     <div class="dashboard">
         <!-- LEFT PANEL: LOGGING -->
         <div class="log-panel">
-            <h3>Log a Trade</h3>
+            <h3 id="formTitle">Log a Trade</h3>
             
             <div class="form-row">
                 <div class="form-group">
@@ -214,22 +259,12 @@
 
             <div class="form-row">
                 <div class="form-group">
-                    <label>Account Firm</label>
-                    <select id="tFirm">
-                        <option>Alpha</option>
-                        <option>Apex</option>
-                        <option>Topstep</option>
-                        <option>MFFU</option>
-                        <option>Lucid</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Account Type</label>
-                    <select id="tType"><option>Evaluation</option><option>Funded</option></select>
-                </div>
-                <div class="form-group">
                     <label>Contracts / Size</label>
                     <input type="number" id="tContracts" placeholder="e.g. 5">
+                </div>
+                <div class="form-group">
+                    <label>Duration (Mins)</label>
+                    <input type="number" id="tDuration" placeholder="e.g. 15">
                 </div>
             </div>
 
@@ -246,10 +281,6 @@
                 <div class="form-group">
                     <label>What News Event?</label>
                     <input type="text" id="tNewsEvent" placeholder="e.g. CPI, NFP, FOMC">
-                </div>
-                <div class="form-group">
-                    <label>Duration (Mins)</label>
-                    <input type="number" id="tDuration" placeholder="e.g. 15">
                 </div>
             </div>
 
@@ -341,19 +372,18 @@
         <!-- RIGHT PANEL -->
         <div class="right-panel">
             
-            <!-- PORTFOLIO SETTINGS STRIP -->
-            <div class="settings-strip">
+            <!-- CURRENT ACTIVE ACCOUNT CONFIG STRIP -->
+            <div class="account-config-box">
                 <div class="form-group">
                     <label>Starting Balance ($)</label>
-                    <input type="number" id="sBaseBalance" onchange="saveSettings()" placeholder="e.g. 50000">
+                    <input type="number" id="accStartBal" onchange="updateActiveAccountSettings()">
                 </div>
                 <div class="form-group">
-                    <label>Profit Target / Goal ($)</label>
-                    <input type="number" id="sTargetGoal" onchange="saveSettings()" placeholder="e.g. 3000">
+                    <label>Target Account Balance ($)</label>
+                    <input type="number" id="accTargetBal" onchange="updateActiveAccountSettings()">
                 </div>
-                <div class="form-group">
-                    <label>Number of Active Evals</label>
-                    <input type="number" id="sEvalCount" onchange="saveSettings()" placeholder="e.g. 20">
+                <div class="form-group" style="flex:0.5;">
+                    <button class="delete-btn" style="padding:10px;" onclick="deleteActiveAccount()">Delete Account</button>
                 </div>
             </div>
 
@@ -387,7 +417,7 @@
             <!-- LOCAL AI COACH -->
             <div class="ai-coach">
                 <h4>AI Trade Analysis <button class="analyze-btn" onclick="generateAIFeedback()">Run Analysis</button></h4>
-                <p id="aiOutput">Waiting for trade logs... Click "Run Analysis" to get feedback on psychology and market execution.</p>
+                <p id="aiOutput">Waiting for trade logs... Click "Run Analysis" to get feedback on psychology and market execution for this account.</p>
             </div>
 
             <!-- CHART -->
@@ -401,7 +431,6 @@
                     <thead>
                         <tr>
                             <th>Date / Time</th>
-                            <th>Account</th>
                             <th>News Impact</th>
                             <th>Pre-Emotion</th>
                             <th>Setup</th>
@@ -412,6 +441,48 @@
                     </thead>
                     <tbody id="historyTableBody"></tbody>
                 </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- NEW ACCOUNT MODAL -->
+    <div class="modal-overlay" id="addAccountModal">
+        <div class="modal">
+            <h3>Add New Account</h3>
+            <div class="form-group">
+                <label>Account Name / Label</label>
+                <input type="text" id="mAccName" placeholder="e.g. Alpha Eval 1">
+            </div>
+            <div class="form-group">
+                <label>Firm Name</label>
+                <select id="mAccFirm">
+                    <option>Alpha</option>
+                    <option>Apex</option>
+                    <option>Topstep</option>
+                    <option>MFFU</option>
+                    <option>Lucid</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Account Type</label>
+                <select id="mAccType">
+                    <option>Evaluation</option>
+                    <option>Funded</option>
+                </select>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Starting Balance ($)</label>
+                    <input type="number" id="mAccStart" value="50000">
+                </div>
+                <div class="form-group">
+                    <label>Target Balance ($)</label>
+                    <input type="number" id="mAccTarget" value="53000">
+                </div>
+            </div>
+            <div style="display:flex; gap:10px; margin-top:10px;">
+                <button class="log-btn" style="flex:1;" onclick="createNewAccount()">Create Account</button>
+                <button class="btn-secondary" style="flex:1;" onclick="closeAddAccountModal()">Cancel</button>
             </div>
         </div>
     </div>
@@ -430,35 +501,100 @@
         }
         entryInput.addEventListener('input', calcRR); stopInput.addEventListener('input', calcRR); exitInput.addEventListener('input', calcRR);
 
-        // Core Data Storage (LocalStorage)
+        // --- MULTI-ACCOUNT STATE STORAGE ---
+        let accounts = JSON.parse(localStorage.getItem('ictAccounts')) || [
+            { id: 'default_1', name: 'Alpha Eval 1', firm: 'Alpha', type: 'Evaluation', startBal: 50000, targetBal: 53000 }
+        ];
+        let activeAccountId = localStorage.getItem('ictActiveAccount') || accounts[0].id;
         let tradesData = JSON.parse(localStorage.getItem('ictJournal')) || [];
-        let portfolioSettings = JSON.parse(localStorage.getItem('ictSettings')) || {
-            baseBalance: 50000,
-            targetGoal: 3000,
-            evalCount: 1
-        };
         let pnlChartInstance = null;
 
-        // Initialize Settings Inputs
-        document.getElementById('sBaseBalance').value = portfolioSettings.baseBalance;
-        document.getElementById('sTargetGoal').value = portfolioSettings.targetGoal;
-        document.getElementById('sEvalCount').value = portfolioSettings.evalCount;
+        function saveAccountsState() {
+            localStorage.setItem('ictAccounts', JSON.stringify(accounts));
+            localStorage.setItem('ictActiveAccount', activeAccountId);
+        }
 
-        function saveSettings() {
-            portfolioSettings.baseBalance = parseFloat(document.getElementById('sBaseBalance').value) || 0;
-            portfolioSettings.targetGoal = parseFloat(document.getElementById('sTargetGoal').value) || 0;
-            portfolioSettings.evalCount = parseInt(document.getElementById('sEvalCount').value) || 0;
-            localStorage.setItem('ictSettings', JSON.stringify(portfolioSettings));
-            renderDashboard(); // Re-render everything with new settings
+        function populateAccountDropdown() {
+            const select = document.getElementById('accountSelect');
+            select.innerHTML = '';
+            accounts.forEach(acc => {
+                const opt = document.createElement('option');
+                opt.value = acc.id;
+                opt.innerText = `${acc.name} (${acc.type})`;
+                if (acc.id === activeAccountId) opt.selected = true;
+                select.appendChild(opt);
+            });
+        }
+
+        function switchAccount() {
+            activeAccountId = document.getElementById('accountSelect').value;
+            saveAccountsState();
+            renderDashboard();
+        }
+
+        function updateActiveAccountSettings() {
+            const acc = accounts.find(a => a.id === activeAccountId);
+            if (acc) {
+                acc.startBal = parseFloat(document.getElementById('accStartBal').value) || 0;
+                acc.targetBal = parseFloat(document.getElementById('accTargetBal').value) || 0;
+                saveAccountsState();
+                renderDashboard();
+            }
+        }
+
+        function openAddAccountModal() { document.getElementById('addAccountModal').style.display = 'flex'; }
+        function closeAddAccountModal() { document.getElementById('addAccountModal').style.display = 'none'; }
+
+        function createNewAccount() {
+            const name = document.getElementById('mAccName').value || "New Account";
+            const firm = document.getElementById('mAccFirm').value;
+            const type = document.getElementById('mAccType').value;
+            const startBal = parseFloat(document.getElementById('mAccStart').value) || 50000;
+            const targetBal = parseFloat(document.getElementById('mAccTarget').value) || 53000;
+
+            const newAcc = { id: 'acc_' + Date.now(), name, firm, type, startBal, targetBal };
+            accounts.push(newAcc);
+            activeAccountId = newAcc.id;
+            saveAccountsState();
+            populateAccountDropdown();
+            closeAddAccountModal();
+            renderDashboard();
+        }
+
+        function deleteActiveAccount() {
+            if (accounts.length <= 1) {
+                alert("You must have at least one account.");
+                return;
+            }
+            if (confirm("Are you sure you want to delete this account and all its trades?")) {
+                tradesData = tradesData.filter(t => t.accountId !== activeAccountId);
+                localStorage.setItem('ictJournal', JSON.stringify(tradesData));
+                accounts = accounts.filter(a => a.id !== activeAccountId);
+                activeAccountId = accounts[0].id;
+                saveAccountsState();
+                populateAccountDropdown();
+                renderDashboard();
+            }
         }
 
         function renderDashboard() {
+            populateAccountDropdown();
+            const activeAcc = accounts.find(a => a.id === activeAccountId) || accounts[0];
+
+            // Fill Config Inputs
+            document.getElementById('accStartBal').value = activeAcc.startBal;
+            document.getElementById('accTargetBal').value = activeAcc.targetBal;
+            document.getElementById('formTitle').innerText = `Log Trade (${activeAcc.name})`;
+
+            // Filter trades strictly for active account
+            const filteredTrades = tradesData.filter(t => t.accountId === activeAccountId);
+
             let totalPnl = 0, wins = 0;
             let chartData = [0], chartLabels = ["Start"];
             const tbody = document.getElementById('historyTableBody');
             tbody.innerHTML = '';
 
-            tradesData.forEach((trade, index) => {
+            filteredTrades.forEach((trade, index) => {
                 totalPnl += trade.PNL;
                 if(trade.PNL > 0) wins++;
                 
@@ -468,7 +604,6 @@
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${trade.Date} ${trade.Time}</td>
-                    <td>${trade.AccountFirm} (${trade.AccountType})</td>
                     <td>${trade.NewsImpact} ${trade.NewsEvent ? '- ' + trade.NewsEvent : ''}</td>
                     <td>${trade.EmotionBefore}</td>
                     <td>${trade.Setups}</td>
@@ -479,44 +614,44 @@
                 tbody.insertBefore(tr, tbody.firstChild);
             });
 
-            // Update Basic Stats
-            document.getElementById('totalTrades').innerText = tradesData.length;
-            document.getElementById('winRate').innerText = tradesData.length ? ((wins / tradesData.length) * 100).toFixed(0) + "%" : "0%";
+            // Stats Calculations
+            document.getElementById('totalTrades').innerText = filteredTrades.length;
+            document.getElementById('winRate').innerText = filteredTrades.length ? ((wins / filteredTrades.length) * 100).toFixed(0) + "%" : "0%";
             
             const netEl = document.getElementById('netPnl');
             netEl.innerText = (totalPnl >= 0 ? "+$" : "-$") + Math.abs(totalPnl);
             netEl.className = totalPnl >= 0 ? "value green" : "value red";
 
-            // Update Dynamic Account Balance Card
-            const currentBalance = portfolioSettings.baseBalance + totalPnl;
+            // Account Balance Calculations
+            const currentBalance = activeAcc.startBal + totalPnl;
             const balanceEl = document.getElementById('accountBalance');
             balanceEl.innerText = "$" + currentBalance.toLocaleString();
-            
-            // Turns Red if below the starting balance, Green if above or equal
-            if (currentBalance < portfolioSettings.baseBalance) {
-                balanceEl.className = "value red";
-            } else {
-                balanceEl.className = "value green";
-            }
+            balanceEl.className = currentBalance < activeAcc.startBal ? "value red" : "value green";
 
-            // Update Eval Progress Bar using custom Target Goal
-            let prog = (totalPnl / portfolioSettings.targetGoal) * 100;
+            // Absolute Target Balance Progress Engine
+            const neededProfit = activeAcc.targetBal - activeAcc.startBal;
+            let prog = 0;
+            if (neededProfit > 0) {
+                prog = (totalPnl / neededProfit) * 100;
+            } else {
+                prog = 100;
+            }
             if(prog > 100) prog = 100; if(prog < 0) prog = 0;
+            
             document.getElementById('progressBar').style.width = prog + "%";
             
-            if(totalPnl >= portfolioSettings.targetGoal) {
-                document.getElementById('progressText').innerText = "Target Hit!";
+            if (currentBalance >= activeAcc.targetBal && activeAcc.targetBal > activeAcc.startBal) {
+                document.getElementById('progressText').innerText = "TARGET REACHED!";
                 document.getElementById('evalTitle').innerText = "BALANCE REACHED";
                 document.getElementById('evalTitle').classList.add('balance-reached');
                 document.getElementById('progressBar').style.backgroundColor = "var(--accent-gold)";
             } else {
-                document.getElementById('progressText').innerText = "$" + totalPnl.toLocaleString() + " / $" + portfolioSettings.targetGoal.toLocaleString();
+                document.getElementById('progressText').innerText = "$" + currentBalance.toLocaleString() + " / $" + activeAcc.targetBal.toLocaleString();
                 document.getElementById('evalTitle').innerText = "Eval Progress";
                 document.getElementById('evalTitle').classList.remove('balance-reached');
                 document.getElementById('progressBar').style.backgroundColor = "var(--accent-green)";
             }
 
-            // Render Chart
             renderChart(chartLabels, chartData, totalPnl);
         }
 
@@ -544,16 +679,17 @@
             const pnlValue = parseFloat(document.getElementById('pnl').value);
             if (isNaN(pnlValue)) { alert("Please enter a valid Profit/Loss amount."); return; }
 
+            const activeAcc = accounts.find(a => a.id === activeAccountId);
             const cbs = document.querySelectorAll('#setupCheckboxes input[type="checkbox"]:checked');
             const tags = Array.from(cbs).map(cb => cb.value).join(', ') || "None";
 
             const newTrade = {
                 id: Date.now(),
+                accountId: activeAccountId,
+                accountName: activeAcc.name,
                 Date: document.getElementById('tDate').value,
                 Time: document.getElementById('tTime').value || "--:--",
                 TimeFrame: document.getElementById('tTf').value,
-                AccountFirm: document.getElementById('tFirm').value,
-                AccountType: document.getElementById('tType').value,
                 Contracts: document.getElementById('tContracts').value || "1",
                 NewsImpact: document.getElementById('tNewsImpact').value,
                 NewsEvent: document.getElementById('tNewsEvent').value || "N/A",
@@ -572,7 +708,7 @@
             tradesData.push(newTrade);
             localStorage.setItem('ictJournal', JSON.stringify(tradesData));
             
-            // Clear Form Inputs
+            // Reset Form Inputs
             document.getElementById('pnl').value = ""; document.getElementById('tAnalysis').value = ""; document.getElementById('tImprovement').value = "";
             document.getElementById('tPartials').value = ""; document.getElementById('tDuration').value = ""; document.getElementById('tNewsEvent').value = "";
             entryInput.value = ""; stopInput.value = ""; exitInput.value = ""; rrOutput.value = "";
@@ -589,21 +725,21 @@
 
         function exportToExcel() {
             if (tradesData.length === 0) { alert("No logs available to export."); return; }
-            const exportData = tradesData.map(({id, ...rest}) => rest);
+            const exportData = tradesData.map(({id, accountId, ...rest}) => rest);
             const ws = XLSX.utils.json_to_sheet(exportData);
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Journal_Logs");
-            XLSX.writeFile(wb, "ICT_Trading_Platform_Logs.xlsx");
+            XLSX.utils.book_append_sheet(wb, ws, "All_Account_Logs");
+            XLSX.writeFile(wb, "ICT_MultiAccount_Trading_Logs.xlsx");
         }
 
-        // Local AI Coach with Emotion & News Analysis
         function generateAIFeedback() {
-            if(tradesData.length < 3) {
-                document.getElementById('aiOutput').innerText = "Log at least 3 trades to generate AI psychology and execution insights.";
+            const filteredTrades = tradesData.filter(t => t.accountId === activeAccountId);
+            if(filteredTrades.length < 3) {
+                document.getElementById('aiOutput').innerText = "Log at least 3 trades on this account to generate AI psychology and execution insights.";
                 return;
             }
             let fomoCount = 0, highNewsCount = 0, totalPnl = 0;
-            tradesData.forEach(t => {
+            filteredTrades.forEach(t => {
                 totalPnl += t.PNL;
                 if(t.EmotionBefore.includes("FOMO") || t.EmotionBefore.includes("Revenge")) fomoCount++;
                 if(t.NewsImpact === "High Impact") highNewsCount++;
@@ -611,18 +747,18 @@
 
             let feedback = "";
             if (fomoCount >= 2) {
-                feedback = `Warning: You logged pre-trade FOMO/Revenge emotions on ${fomoCount} trades. Step away from the chart when feeling rushed; wait for liquidity sweeps and displacement on higher timeframes.`;
+                feedback = `Warning: You logged pre-trade FOMO/Revenge emotions on ${fomoCount} trades for this account. Step away from the chart when feeling rushed; wait for liquidity sweeps and displacement.`;
             } else if (highNewsCount >= 2 && totalPnl < 0) {
-                feedback = `High impact news events are negatively affecting your account. Consider staying on your hands during major release drivers like CPI/NFP and executing strictly on post-news liquidity sweeps.`;
+                feedback = `High impact news events are negatively affecting this account. Consider staying on your hands during major release drivers like CPI/NFP.`;
             } else if (totalPnl > 0) {
-                feedback = `Strong execution! Pre-trade emotions show discipline and risk control. Keep respecting your stop loss rules and holding for your liquidity targets. You are the 1%.`;
+                feedback = `Strong execution on this account! Pre-trade emotions show discipline. Keep respecting your stop loss rules and holding for your targets. You are the 1%.`;
             } else {
                 feedback = `Focus on your trade reflections. Review the "What could have been done better" section for your losses to identify recurring technical mistakes.`;
             }
             document.getElementById('aiOutput').innerText = feedback;
         }
 
-        // Initialize on page load
+        // Initialize App
         renderDashboard();
     </script>
 </body>
