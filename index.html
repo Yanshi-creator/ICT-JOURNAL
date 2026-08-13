@@ -3,308 +3,435 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ICT NY AM Journal</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: { colors: { ict: '#E0A93E', dark: '#0A0C10', panel: '#12151B', border: '#1F242C' } }
-            }
-        }
-    </script>
+    <title>ICT Trading Platform</title>
     <style>
-        body { background-color: #0A0C10; color: #E7EAEE; font-family: 'Inter', sans-serif; }
-        input, select, textarea { background-color: #0D1015; border: 1px solid #1F242C; color: white; padding: 0.5rem; border-radius: 0.375rem; width: 100%; }
-        input:focus, select:focus, textarea:focus { outline: 2px solid #E0A93E; }
+        :root {
+            --bg-main: #0f0f13;
+            --bg-panel: #1a1a20;
+            --bg-input: #121217;
+            --text-main: #ffffff;
+            --text-muted: #888890;
+            --accent-gold: #f4b241;
+            --accent-green: #4caf50;
+            --accent-red: #f44336;
+            --border-color: #2c2c35;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            padding: 40px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .header h4 {
+            color: var(--accent-gold);
+            font-size: 0.8rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+            letter-spacing: 1px;
+        }
+
+        .export-btn {
+            background-color: var(--accent-gold);
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 25px;
+        }
+
+        /* Left Panel - Logging */
+        .log-panel {
+            background-color: var(--bg-panel);
+            padding: 25px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .log-panel h3 {
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .form-group {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        input, select, textarea {
+            background-color: var(--bg-input);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 10px;
+            border-radius: 6px;
+            outline: none;
+            font-size: 0.9rem;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            border-color: var(--accent-gold);
+        }
+
+        /* Read-only field styling */
+        input[readonly] {
+            color: var(--accent-gold);
+            font-weight: bold;
+            background-color: rgba(244, 178, 65, 0.05);
+        }
+
+        .checkboxes {
+            display: flex;
+            justify-content: space-between;
+            margin: 15px 0;
+            background-color: var(--bg-input);
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+        }
+
+        .checkboxes label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+
+        .log-btn {
+            background-color: var(--accent-gold);
+            color: #000;
+            border: none;
+            padding: 12px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: opacity 0.2s;
+        }
+
+        .log-btn:hover {
+            opacity: 0.9;
+        }
+
+        .motivation {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 0.85rem;
+            color: var(--accent-gold);
+            letter-spacing: 3px;
+            font-weight: 600;
+            opacity: 0.7;
+            text-transform: uppercase;
+        }
+
+        /* Right Panel - Stats & Visuals */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .stat-card {
+            background-color: var(--bg-panel);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            text-align: center;
+        }
+
+        .stat-card h4 {
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .stat-card .value {
+            font-size: 1.8rem;
+            font-weight: bold;
+        }
+
+        .value.green { color: var(--accent-green); }
+
+        /* Progress Bar Styles */
+        .progress-container {
+            margin-top: 10px;
+            background-color: var(--bg-input);
+            border-radius: 20px;
+            height: 8px;
+            width: 100%;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background-color: var(--accent-green);
+            width: 0%;
+            transition: width 0.5s ease-in-out;
+        }
+
+        .progress-text {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 8px;
+            display: block;
+        }
+
+        .balance-reached {
+            color: var(--accent-gold) !important;
+            font-weight: bold;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .chart-placeholder {
+            background-color: var(--bg-panel);
+            height: 300px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            margin-bottom: 25px;
+        }
     </style>
 </head>
-<body class="p-6 max-w-7xl mx-auto">
+<body>
 
-    <header class="flex justify-between items-end mb-8 border-b border-border pb-4">
+    <div class="header">
         <div>
-            <div class="text-ict text-xs font-mono tracking-widest mb-1">NY AM SESSION</div>
-            <h1 class="text-3xl font-bold font-mono">ICT TRADING PLATFORM</h1>
+            <h4>NY AM Session</h4>
+            <h1>ICT TRADING PLATFORM</h1>
         </div>
-        <button onclick="exportToExcel()" class="bg-ict text-dark px-4 py-2 rounded font-bold hover:opacity-90">
-            Export to Excel (.xlsx)
-        </button>
-    </header>
+        <button class="export-btn">Export to Excel (.xlsx)</button>
+    </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        <!-- LOGGING FORM -->
-        <div class="lg:col-span-1 bg-panel p-6 rounded-xl border border-border">
-            <h2 class="text-lg font-bold mb-4 text-gray-400">Log a Trade</h2>
-            <form id="tradeForm" class="space-y-4">
-                
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="text-xs text-gray-500 block mb-1">Date</label>
-                        <input type="date" id="date" required>
-                    </div>
-                    <div>
-                        <label class="text-xs text-gray-500 block mb-1">Time Entered (ET)</label>
-                        <input type="time" id="time" required>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="text-xs text-gray-500 block mb-1">Account Firm</label>
-                        <select id="firm">
-                            <option>Lucid</option>
-                            <option>Alpha</option>
-                            <option>Apex</option>
-                            <option>Personal</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="text-xs text-gray-500 block mb-1">Account Type</label>
-                        <select id="accType">
-                            <option>Eval</option>
-                            <option>Funded</option>
-                            <option>Live</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div>
-                    <label class="text-xs text-gray-500 block mb-1">News Impact</label>
-                    <select id="news">
-                        <option>Low / None</option>
-                        <option>Medium (Orange)</option>
-                        <option>High (Red)</option>
-                    </select>
-                </div>
-
-                <div class="grid grid-cols-3 gap-2">
-                    <label class="flex items-center space-x-2 text-sm bg-dark p-2 rounded border border-border cursor-pointer">
-                        <input type="checkbox" value="Liquidity Sweep" class="ict-tags accent-ict"> <span>Sweep</span>
-                    </label>
-                    <label class="flex items-center space-x-2 text-sm bg-dark p-2 rounded border border-border cursor-pointer">
-                        <input type="checkbox" value="iFVG" class="ict-tags accent-ict"> <span>iFVG</span>
-                    </label>
-                    <label class="flex items-center space-x-2 text-sm bg-dark p-2 rounded border border-border cursor-pointer">
-                        <input type="checkbox" value="HTF PD Array" class="ict-tags accent-ict"> <span>PD Array</span>
-                    </label>
-                </div>
-
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="text-xs text-gray-500 block mb-1">Entry Price</label>
-                        <input type="number" step="0.25" id="entry" required>
-                    </div>
-                    <div>
-                        <label class="text-xs text-gray-500 block mb-1">Final Exit Price</label>
-                        <input type="number" step="0.25" id="exit" required>
-                    </div>
-                </div>
-
-                <div>
-                    <label class="text-xs text-gray-500 block mb-1">Partials Taken (Prices separated by commas)</label>
-                    <input type="text" id="partials" placeholder="e.g. 19850, 19865">
-                </div>
-
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="text-xs text-gray-500 block mb-1">Profit/Loss ($)</label>
-                        <input type="number" id="pnl" required placeholder="e.g. -150 or 400">
-                    </div>
-                    <div>
-                        <label class="text-xs text-gray-500 block mb-1">Average RR</label>
-                        <input type="number" step="0.1" id="rr" required placeholder="e.g. 2.5">
-                    </div>
-                </div>
-
-                <div>
-                    <label class="text-xs text-gray-500 block mb-1">Market/AI Analysis & Thought Process</label>
-                    <textarea id="notes" rows="3" placeholder="What confirmed the entry?"></textarea>
-                </div>
-
-                <button type="submit" class="w-full bg-ict text-dark font-bold py-3 rounded-lg hover:bg-yellow-500 transition">
-                    Log Trade
-                </button>
-            </form>
-        </div>
-
-        <!-- DASHBOARD & STATS -->
-        <div class="lg:col-span-2 space-y-6">
+    <div class="dashboard">
+        <!-- LEFT PANEL: LOGGING -->
+        <div class="log-panel">
+            <h3>Log a Trade</h3>
             
-            <div class="grid grid-cols-3 gap-4">
-                <div class="bg-panel p-4 rounded-xl border border-border text-center">
-                    <p class="text-xs text-gray-500 tracking-wider">TOTAL TRADES</p>
-                    <p id="stat-total" class="text-3xl font-mono font-bold mt-1">0</p>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Account Firm</label>
+                    <select><option>Lucid</option></select>
                 </div>
-                <div class="bg-panel p-4 rounded-xl border border-border text-center">
-                    <p class="text-xs text-gray-500 tracking-wider">WIN RATE</p>
-                    <p id="stat-wr" class="text-3xl font-mono font-bold mt-1">0%</p>
-                </div>
-                <div class="bg-panel p-4 rounded-xl border border-border text-center">
-                    <p class="text-xs text-gray-500 tracking-wider">NET PNL</p>
-                    <p id="stat-pnl" class="text-3xl font-mono font-bold mt-1">$0</p>
+                <div class="form-group">
+                    <label>Account Type</label>
+                    <select><option>Eval</option></select>
                 </div>
             </div>
 
-            <div class="bg-panel p-6 rounded-xl border border-border">
-                <h2 class="text-sm text-gray-400 mb-4 font-bold">Win Rate & Performance History</h2>
-                <canvas id="wrChart" height="100"></canvas>
+            <div class="checkboxes">
+                <label><input type="checkbox"> Sweep</label>
+                <label><input type="checkbox"> iFVG</label>
+                <label><input type="checkbox"> PD Array</label>
             </div>
 
-            <div class="bg-panel rounded-xl border border-border overflow-hidden overflow-x-auto">
-                <table class="w-full text-left text-sm">
-                    <thead class="bg-dark text-gray-500 text-xs uppercase">
-                        <tr>
-                            <th class="p-4">Date/Time</th>
-                            <th class="p-4">Account</th>
-                            <th class="p-4">Tags</th>
-                            <th class="p-4">PnL</th>
-                            <th class="p-4">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tradeTable" class="divide-y divide-border">
-                        <!-- Trades injected here -->
-                    </tbody>
-                </table>
+            <!-- Pricing for Auto-RR -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Entry Price</label>
+                    <input type="number" id="entry" step="any" placeholder="0.00">
+                </div>
+                <div class="form-group">
+                    <label>Stop Loss</label>
+                    <input type="number" id="stop" step="any" placeholder="0.00">
+                </div>
+                <div class="form-group">
+                    <label>Final Exit</label>
+                    <input type="number" id="exit" step="any" placeholder="0.00">
+                </div>
             </div>
 
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Profit/Loss ($)</label>
+                    <input type="number" id="pnl" placeholder="e.g. 400">
+                </div>
+                <div class="form-group">
+                    <label>Average RR (Auto)</label>
+                    <input type="text" id="rr" readonly placeholder="0.00 R">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Market Analysis & Thought Process</label>
+                <textarea rows="3" placeholder="What confirmed the entry?"></textarea>
+            </div>
+
+            <button class="log-btn" onclick="logTrade()">Log Trade</button>
+
+            <!-- MOTIVATIONAL ANCHOR -->
+            <div class="motivation">You are the 1%</div>
+        </div>
+
+        <!-- RIGHT PANEL: STATS -->
+        <div class="main-content">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h4>Total Trades</h4>
+                    <div class="value" id="totalTrades">0</div>
+                </div>
+                <div class="stat-card">
+                    <h4>Win Rate</h4>
+                    <div class="value">100%</div>
+                </div>
+                <div class="stat-card">
+                    <h4>Net PNL</h4>
+                    <div class="value green" id="netPnl">+$0</div>
+                </div>
+                
+                <!-- NEW: EVAL PROGRESS TRACKER -->
+                <div class="stat-card">
+                    <h4 id="evalTitle">Eval Progress (3K Pass)</h4>
+                    <div class="progress-container">
+                        <div class="progress-bar" id="progressBar"></div>
+                    </div>
+                    <span class="progress-text" id="progressText">$0 / $3,000</span>
+                </div>
+            </div>
+
+            <div class="chart-placeholder">
+                [ Chart / History Data Will Render Here ]
+            </div>
         </div>
     </div>
 
+    <!-- JAVASCRIPT LOGIC -->
     <script>
-        let trades = JSON.parse(localStorage.getItem('ict_trades')) || [];
-        let chartInstance = null;
+        // 1. Auto Calculate RR Logic
+        const entryInput = document.getElementById('entry');
+        const stopInput = document.getElementById('stop');
+        const exitInput = document.getElementById('exit');
+        const rrOutput = document.getElementById('rr');
 
-        document.getElementById('tradeForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const tags = Array.from(document.querySelectorAll('.ict-tags:checked')).map(cb => cb.value).join(', ');
+        function calculateRR() {
+            const entry = parseFloat(entryInput.value);
+            const stop = parseFloat(stopInput.value);
+            const exit = parseFloat(exitInput.value);
 
-            const newTrade = {
-                id: Date.now(),
-                date: document.getElementById('date').value,
-                time: document.getElementById('time').value,
-                firm: document.getElementById('firm').value,
-                accType: document.getElementById('accType').value,
-                news: document.getElementById('news').value,
-                tags: tags,
-                entry: document.getElementById('entry').value,
-                exit: document.getElementById('exit').value,
-                partials: document.getElementById('partials').value,
-                pnl: parseFloat(document.getElementById('pnl').value),
-                rr: document.getElementById('rr').value,
-                notes: document.getElementById('notes').value
-            };
+            if (!isNaN(entry) && !isNaN(stop) && !isNaN(exit)) {
+                // Risk is absolute difference between entry and stop
+                const risk = Math.abs(entry - stop);
+                // Reward is absolute difference between exit and entry
+                const reward = Math.abs(exit - entry);
 
-            trades.push(newTrade);
-            localStorage.setItem('ict_trades', JSON.stringify(trades));
-            this.reset();
-            updateDashboard();
-        });
-
-        function deleteTrade(id) {
-            trades = trades.filter(t => t.id !== id);
-            localStorage.setItem('ict_trades', JSON.stringify(trades));
-            updateDashboard();
-        }
-
-        function updateDashboard() {
-            // Table
-            const tbody = document.getElementById('tradeTable');
-            tbody.innerHTML = '';
-            trades.slice().reverse().forEach(t => {
-                const color = t.pnl >= 0 ? 'text-green-500' : 'text-red-500';
-                tbody.innerHTML += `
-                    <tr>
-                        <td class="p-4 font-mono">${t.date} ${t.time}</td>
-                        <td class="p-4">${t.firm} <span class="text-xs text-gray-500">(${t.accType})</span></td>
-                        <td class="p-4 text-xs">${t.tags || '-'}</td>
-                        <td class="p-4 font-mono font-bold ${color}">${t.pnl >= 0 ? '+' : ''}$${t.pnl}</td>
-                        <td class="p-4">
-                            <button onclick="deleteTrade(${t.id})" class="text-red-500 hover:text-red-400">Delete</button>
-                        </td>
-                    </tr>
-                `;
-            });
-
-            // Stats
-            const total = trades.length;
-            const wins = trades.filter(t => t.pnl > 0).length;
-            const wr = total === 0 ? 0 : Math.round((wins / total) * 100);
-            const netPnl = trades.reduce((sum, t) => sum + t.pnl, 0);
-
-            document.getElementById('stat-total').innerText = total;
-            document.getElementById('stat-wr').innerText = `${wr}%`;
-            document.getElementById('stat-pnl').innerText = `${netPnl >= 0 ? '+' : ''}$${netPnl}`;
-            document.getElementById('stat-pnl').className = `text-3xl font-mono font-bold mt-1 ${netPnl >= 0 ? 'text-green-500' : 'text-red-500'}`;
-
-            // Chart
-            updateChart();
-        }
-
-        function updateChart() {
-            const ctx = document.getElementById('wrChart').getContext('2d');
-            const labels = trades.map((_, i) => `Trade ${i + 1}`);
-            
-            let cumulative = 0;
-            const data = trades.map(t => {
-                cumulative += t.pnl;
-                return cumulative;
-            });
-
-            if(chartInstance) chartInstance.destroy();
-
-            chartInstance = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Cumulative PnL ($)',
-                        data: data,
-                        borderColor: '#E0A93E',
-                        backgroundColor: 'rgba(224, 169, 62, 0.1)',
-                        fill: true,
-                        tension: 0.3
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        y: { grid: { color: '#1F242C' }, ticks: { color: '#8891A0' } },
-                        x: { grid: { display: false }, ticks: { color: '#8891A0' } }
-                    },
-                    plugins: { legend: { display: false } }
+                if (risk > 0) {
+                    const rr = (reward / risk).toFixed(2);
+                    rrOutput.value = rr + " R";
                 }
-            });
+            } else {
+                rrOutput.value = "";
+            }
         }
 
-        function exportToExcel() {
-            if(trades.length === 0) return alert("No trades to export!");
-            // Clean up the data for Excel
-            const excelData = trades.map(t => ({
-                "Date": t.date,
-                "Time (ET)": t.time,
-                "Firm": t.firm,
-                "Account Type": t.accType,
-                "News Impact": t.news,
-                "ICT Setups": t.tags,
-                "Entry Price": t.entry,
-                "Final Exit": t.exit,
-                "Partials": t.partials,
-                "PnL ($)": t.pnl,
-                "Avg RR": t.rr,
-                "Analysis Notes": t.notes
-            }));
+        // Listen for typing in the pricing fields
+        entryInput.addEventListener('input', calculateRR);
+        stopInput.addEventListener('input', calculateRR);
+        exitInput.addEventListener('input', calculateRR);
 
-            const worksheet = XLSX.utils.json_to_sheet(excelData);
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "ICT Journal");
-            XLSX.writeFile(workbook, "Trading_Journal.xlsx");
+        // 2. 3K Passing Tracker Logic
+        let currentTotalPnl = 0;
+        let tradesCount = 0;
+        const targetGoal = 3000;
+
+        function logTrade() {
+            const pnlInput = document.getElementById('pnl');
+            const pnlValue = parseFloat(pnlInput.value);
+
+            if(!isNaN(pnlValue)) {
+                // Update basic stats
+                currentTotalPnl += pnlValue;
+                tradesCount++;
+                
+                document.getElementById('totalTrades').innerText = tradesCount;
+                document.getElementById('netPnl').innerText = (currentTotalPnl >= 0 ? "+$" : "-$") + Math.abs(currentTotalPnl);
+
+                // Update Progress Bar
+                let progressPercentage = (currentTotalPnl / targetGoal) * 100;
+                
+                // Cap visual bar at 100% or 0%
+                if(progressPercentage > 100) progressPercentage = 100;
+                if(progressPercentage < 0) progressPercentage = 0;
+
+                const progressBar = document.getElementById('progressBar');
+                const progressText = document.getElementById('progressText');
+                const evalTitle = document.getElementById('evalTitle');
+
+                progressBar.style.width = progressPercentage + "%";
+
+                if(currentTotalPnl >= targetGoal) {
+                    // Balance Reached State
+                    progressText.innerText = "Target Hit!";
+                    progressText.classList.add("balance-reached");
+                    evalTitle.innerText = "BALANCE REACHED";
+                    evalTitle.classList.add("balance-reached");
+                    progressBar.style.backgroundColor = "var(--accent-gold)";
+                } else {
+                    // Normal State
+                    progressText.innerText = "$" + currentTotalPnl + " / $" + targetGoal;
+                    progressText.classList.remove("balance-reached");
+                    evalTitle.innerText = "Eval Progress (3K Pass)";
+                    evalTitle.classList.remove("balance-reached");
+                    progressBar.style.backgroundColor = "var(--accent-green)";
+                }
+
+                // Clear input after logging
+                pnlInput.value = "";
+            }
         }
-
-        // Init
-        updateDashboard();
     </script>
 </body>
 </html>
