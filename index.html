@@ -1,792 +1,310 @@
-State, useEffect, useMemo, useRef } from "react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
-import { Plus, Trash2, Pencil, BarChart3, ListOrdered, ClipboardEdit, X, Check, TrendingUp, TrendingDown, Camera, ShieldAlert, Settings, ImageOff } from "lucide-react";
- 
-const SETUPS = ["FVG", "Order Block", "Breaker", "OTE", "Liquidity Sweep", "MSS / BOS", "Turtle Soup", "Silver Bullet", "Unicorn", "Other"];
-const EMOTIONS = ["Calm / Neutral", "Confident", "FOMO", "Revenge", "Anxious", "Impatient", "Hesitant"];
-const ACCOUNT_TYPES = ["Eval", "Funded", "Live", "Demo / Backtest", "Other"];
-const DEFAULT_MAX_BY_TYPE = { Eval: 2, Funded: "", Live: "", "Demo / Backtest": "", Other: "" };
- 
-const TRADES_KEY = "ict_mnq_trades_v2";
-const LEGACY_TRADES_KEY = "ict_mnq_trades_v1";
-const ACCOUNTS_KEY = "ict_mnq_accounts_v1";
-const RULES_KEY = "ict_mnq_playbook_v1";
-const shotsKey = (id) => `shots:${id}`;
- 
-const emptyForm = {
-  date: new Date().toISOString().slice(0, 10),
-  accountId: "",
-  direction: "Long",
-  setup: "FVG",
-  entryTime: "09:45",
-  entryPrice: "",
-  stopPrice: "",
-  contracts: "1",
-  exits: [],
-  followedPlan: true,
-  emotion: "Calm / Neutral",
-  notes: "",
-  shots: [],
-};
- 
-function uid() {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
-}
- 
-function computeMetrics(t) {
-  const entry = parseFloat(t.entryPrice), stop = parseFloat(t.stopPrice);
-  const totalContracts = parseFloat(t.contracts) || 0;
-  const riskPoints = Number.isNaN(entry) || Number.isNaN(stop) ? 0 : Math.abs(entry - stop);
-  let dollars = 0, weightedR = 0, exitedContracts = 0;
-  (t.exits || []).forEach((ex) => {
-    const price = parseFloat(ex.price), c = parseFloat(ex.contracts) || 0;
-    if (Number.isNaN(price) || c <= 0 || Number.isNaN(entry)) return;
-    const points = t.direction === "Long" ? price - entry : entry - price;
-    const d = points * 2 * c;
-    dollars += d;
-    weightedR += riskPoints ? (points / riskPoints) * c : 0;
-    exitedContracts += c;
-  });
-  const r = exitedContracts ? weightedR / exitedContracts : 0;
-  const remaining = Math.max(0, totalContracts - exitedContracts);
-  return { r, dollars, exitedContracts, totalContracts, remaining, riskPoints, isClosed: remaining <= 0 && exitedContracts > 0 };
-}
- 
-function timeToPct(hhmm) {
-  const [h, m] = (hhmm || "09:30").split(":").map(Number);
-  const mins = h * 60 + m;
-  const start = 9 * 60 + 30, end = 11 * 60;
-  return Math.min(100, Math.max(0, ((mins - start) / (end - start)) * 100));
-}
- 
-function compressImage(file, maxWidth = 900, quality = 0.6) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error("read failed"));
-    reader.onload = () => {
-      const img = new Image();
-      img.onerror = () => reject(new Error("image load failed"));
-      img.onload = () => {
-        const scale = Math.min(1, maxWidth / img.width);
-        const canvas = document.createElement("canvas");
-        canvas.width = img.width * scale;
-        canvas.height = img.height * scale;
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL("image/jpeg", quality));
-      };
-      img.src = reader.result;
-    };
-    reader.readAsDataURL(file);
-  });
-}
- 
-export default function ICTJournal() {
-  const [trades, setTrades] = useState([]);
-  const [accounts, setAccounts] = useState([]);
-  const [playbook, setPlaybook] = useState([]);
-  const [loaded, setLoaded] = useState(false);
-  const [tab, setTab] = useState("log");
-  const [form, setForm] = useState(emptyForm);
-  const [editingId, setEditingId] = useState(null);
-  const [saveState, setSaveState] = useState("idle");
-  const [lightbox, setLightbox] = useState(null);
-  const [shotCache, setShotCache] = useState({});
- 
-  useEffect(() => {
-    (async () => {
-      try {
-        const [tRes, aRes, rRes] = await Promise.allSettled([
-          window.storage.get(TRADES_KEY, false),
-          window.storage.get(ACCOUNTS_KEY, false),
-          window.storage.get(RULES_KEY, false),
-        ]);
-        let loadedTrades = tRes.status === "fulfilled" && tRes.value ? JSON.parse(tRes.value.value) : null;
-        let loadedAccounts = aRes.status === "fulfilled" && aRes.value ? JSON.parse(aRes.value.value) : null;
-        let loadedRules = rRes.status === "fulfilled" && rRes.value ? JSON.parse(rRes.value.value) : null;
- 
-        if (!loadedTrades) {
-          // try migrating from the old single-exit schema
-          try {
-            const legacy = await window.storage.get(LEGACY_TRADES_KEY, false);
-            if (legacy && legacy.value) {
-              const old = JSON.parse(legacy.value);
-              loadedTrades = old.map((t) => ({
-                ...t,
-                accountId: "legacy",
-                exits: t.exitPrice ? [{ id: uid(), price: t.exitPrice, contracts: t.contracts || "1", time: t.entryTime }] : [],
-                shots: [],
-              }));
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ICT NY AM Journal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: { colors: { ict: '#E0A93E', dark: '#0A0C10', panel: '#12151B', border: '#1F242C' } }
             }
-          } catch (e) {}
         }
-        setTrades(loadedTrades || []);
-        setAccounts(loadedAccounts || []);
-        setPlaybook(loadedRules || ["Wait for liquidity sweep before entry", "No trading first 5 min of the session", "Max 2 losses then stop for the day"]);
-      } catch (e) {
-        // fresh start
-      } finally {
-        setLoaded(true);
-      }
-    })();
-  }, []);
- 
-  async function persistTrades(next) {
-    setTrades(next);
-    setSaveState("saving");
-    try {
-      await window.storage.set(TRADES_KEY, JSON.stringify(next), false);
-      setSaveState("saved");
-      setTimeout(() => setSaveState("idle"), 1200);
-    } catch (e) {
-      setSaveState("error");
-    }
-  }
- 
-  async function persistAccounts(next) {
-    setAccounts(next);
-    try { await window.storage.set(ACCOUNTS_KEY, JSON.stringify(next), false); } catch (e) {}
-  }
- 
-  async function persistPlaybook(next) {
-    setPlaybook(next);
-    try { await window.storage.set(RULES_KEY, JSON.stringify(next), false); } catch (e) {}
-  }
- 
-  function resetForm() {
-    setForm({ ...emptyForm, accountId: accounts[0] ? accounts[0].id : "" });
-    setEditingId(null);
-  }
- 
-  async function submitTrade(e) {
-    e.preventDefault();
-    if (!form.entryPrice || !form.stopPrice || !form.accountId) return;
-    const id = editingId || uid();
-    const { shots, ...rest } = form;
-    const record = { ...rest, id };
-    if (editingId) {
-      persistTrades(trades.map((t) => (t.id === editingId ? record : t)));
-    } else {
-      persistTrades([...trades, record]);
-    }
-    try {
-      await window.storage.set(shotsKey(id), JSON.stringify(shots || []), false);
-      setShotCache((c) => ({ ...c, [id]: shots || [] }));
-    } catch (e) {}
-    resetForm();
-    setTab("history");
-  }
- 
-  async function editTrade(t) {
-    let shots = shotCache[t.id];
-    if (!shots) {
-      try {
-        const res = await window.storage.get(shotsKey(t.id), false);
-        shots = res && res.value ? JSON.parse(res.value) : [];
-      } catch (e) {
-        shots = [];
-      }
-      setShotCache((c) => ({ ...c, [t.id]: shots }));
-    }
-    setForm({ ...t, shots });
-    setEditingId(t.id);
-    setTab("log");
-  }
- 
-  async function deleteTrade(id) {
-    persistTrades(trades.filter((t) => t.id !== id));
-    try { await window.storage.delete(shotsKey(id), false); } catch (e) {}
-  }
- 
-  async function viewShots(t) {
-    let shots = shotCache[t.id];
-    if (shots === undefined) {
-      try {
-        const res = await window.storage.get(shotsKey(t.id), false);
-        shots = res && res.value ? JSON.parse(res.value) : [];
-      } catch (e) {
-        shots = [];
-      }
-      setShotCache((c) => ({ ...c, [t.id]: shots }));
-    }
-    setLightbox({ tradeId: t.id, shots, index: 0 });
-  }
- 
-  const sorted = useMemo(
-    () => [...trades].sort((a, b) => (a.date + a.entryTime).localeCompare(b.date + b.entryTime)),
-    [trades]
-  );
- 
-  const accountById = useMemo(() => Object.fromEntries(accounts.map((a) => [a.id, a])), [accounts]);
- 
-  const stats = useMemo(() => {
-    if (sorted.length === 0) return null;
-    const withM = sorted.map((t) => ({ ...t, m: computeMetrics(t) }));
-    const closed = withM.filter((t) => t.m.exitedContracts > 0);
-    const wins = closed.filter((t) => t.m.r > 0).length;
-    const losses = closed.filter((t) => t.m.r < 0).length;
-    const be = closed.length - wins - losses;
-    const totalR = closed.reduce((s, t) => s + t.m.r, 0);
-    const totalDollars = closed.reduce((s, t) => s + t.m.dollars, 0);
-    const avgR = closed.length ? totalR / closed.length : 0;
-    const followed = withM.filter((t) => t.followedPlan).length;
-    let cum = 0;
-    const equity = closed.map((t, i) => { cum += t.m.r; return { i: i + 1, r: Number(cum.toFixed(2)) }; });
-    const bySetup = {};
-    closed.forEach((t) => {
-      bySetup[t.setup] = bySetup[t.setup] || { count: 0, r: 0 };
-      bySetup[t.setup].count += 1;
-      bySetup[t.setup].r += t.m.r;
-    });
-    return { withM, closed, wins, losses, be, totalR, totalDollars, avgR, followed, equity, bySetup };
-  }, [sorted]);
- 
-  const todaysCountForAccount = useMemo(() => {
-    if (!form.accountId || !form.date) return 0;
-    return trades.filter((t) => t.accountId === form.accountId && t.date === form.date && t.id !== editingId).length;
-  }, [trades, form.accountId, form.date, editingId]);
- 
-  const selectedAccount = accountById[form.accountId];
- 
-  return (
-    <div style={styles.app}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
-        * { box-sizing: border-box; }
-        .icj-scroll::-webkit-scrollbar { height: 6px; width: 6px; }
-        .icj-scroll::-webkit-scrollbar-thumb { background: #2A303A; border-radius: 4px; }
-        input, select, textarea { font-family: 'Inter', sans-serif; }
-        input:focus, select:focus, textarea:focus { outline: 2px solid #E0A93E; outline-offset: -1px; }
-        button:focus-visible { outline: 2px solid #E0A93E; outline-offset: 2px; }
-      `}</style>
- 
-      <header style={styles.header}>
+    </script>
+    <style>
+        body { background-color: #0A0C10; color: #E7EAEE; font-family: 'Inter', sans-serif; }
+        input, select, textarea { background-color: #0D1015; border: 1px solid #1F242C; color: white; padding: 0.5rem; border-radius: 0.375rem; width: 100%; }
+        input:focus, select:focus, textarea:focus { outline: 2px solid #E0A93E; }
+    </style>
+</head>
+<body class="p-6 max-w-7xl mx-auto">
+
+    <header class="flex justify-between items-end mb-8 border-b border-border pb-4">
         <div>
-          <div style={styles.eyebrow}>NY AM SESSION &middot; MICRO NASDAQ</div>
-          <h1 style={styles.title}>MNQ / ICT JOURNAL</h1>
+            <div class="text-ict text-xs font-mono tracking-widest mb-1">NY AM SESSION</div>
+            <h1 class="text-3xl font-bold font-mono">ICT TRADING PLATFORM</h1>
         </div>
-        <div style={styles.saveIndicator}>
-          {saveState === "saving" && "saving…"}
-          {saveState === "saved" && "✓ saved"}
-          {saveState === "error" && "save failed"}
-        </div>
-      </header>
- 
-      <nav style={styles.tabs}>
-        <TabButton active={tab === "log"} onClick={() => setTab("log")} icon={<ClipboardEdit size={15} />} label={editingId ? "Edit Trade" : "Log Trade"} />
-        <TabButton active={tab === "history"} onClick={() => setTab("history")} icon={<ListOrdered size={15} />} label={`History (${trades.length})`} />
-        <TabButton active={tab === "stats"} onClick={() => setTab("stats")} icon={<BarChart3 size={15} />} label="Stats" />
-        <TabButton active={tab === "rules"} onClick={() => setTab("rules")} icon={<Settings size={15} />} label="Accounts & Rules" />
-      </nav>
- 
-      <main style={styles.main} className="icj-scroll">
-        {!loaded && <div style={styles.muted}>Loading journal…</div>}
- 
-        {loaded && tab === "log" && (
-          accounts.length === 0 ? (
-            <div style={styles.panel}>
-              <div style={styles.muted}>You need at least one account before logging a trade.</div>
-              <button onClick={() => setTab("rules")} style={{ ...styles.primaryBtn, marginTop: 12 }}><Plus size={14} /> Add an account</button>
-            </div>
-          ) : (
-            <TradeForm
-              form={form} setForm={setForm} onSubmit={submitTrade} editingId={editingId} onCancel={resetForm}
-              accounts={accounts} todaysCount={todaysCountForAccount} selectedAccount={selectedAccount}
-            />
-          )
-        )}
- 
-        {loaded && tab === "history" && (
-          <HistoryTable trades={sorted} accountById={accountById} onEdit={editTrade} onDelete={deleteTrade} onViewShots={viewShots} />
-        )}
- 
-        {loaded && tab === "stats" && <Stats stats={stats} accountById={accountById} />}
- 
-        {loaded && tab === "rules" && (
-          <RulesTab accounts={accounts} setAccounts={persistAccounts} playbook={playbook} setPlaybook={persistPlaybook} />
-        )}
-      </main>
- 
-      {lightbox && <Lightbox data={lightbox} onClose={() => setLightbox(null)} onIndex={(i) => setLightbox({ ...lightbox, index: i })} />}
-    </div>
-  );
-}
- 
-function TabButton({ active, onClick, icon, label }) {
-  return (
-    <button onClick={onClick} style={{ ...styles.tabBtn, ...(active ? styles.tabBtnActive : {}) }}>
-      {icon}{label}
-    </button>
-  );
-}
- 
-function Field({ label, children }) {
-  return (
-    <label style={styles.field}>
-      <span style={styles.fieldLabel}>{label}</span>
-      {children}
-    </label>
-  );
-}
- 
-function TradeForm({ form, setForm, onSubmit, editingId, onCancel, accounts, todaysCount, selectedAccount }) {
-  const fileInputRef = useRef(null);
-  const set = (k) => (e) => setForm({ ...form, [k]: e.target.type === "checkbox" ? e.target.checked : e.target.value });
-  const preview = useMemo(() => computeMetrics(form), [form]);
- 
-  const totalContracts = parseFloat(form.contracts) || 0;
-  const exitedSum = (form.exits || []).reduce((s, ex) => s + (parseFloat(ex.contracts) || 0), 0);
-  const remaining = Math.max(0, totalContracts - exitedSum);
- 
-  function addExit() {
-    setForm({ ...form, exits: [...(form.exits || []), { id: uid(), price: "", contracts: remaining > 0 ? String(remaining) : "1", time: form.entryTime }] });
-  }
-  function updateExit(id, key, val) {
-    setForm({ ...form, exits: form.exits.map((ex) => (ex.id === id ? { ...ex, [key]: val } : ex)) });
-  }
-  function removeExit(id) {
-    setForm({ ...form, exits: form.exits.filter((ex) => ex.id !== id) });
-  }
- 
-  async function handleFiles(e) {
-    const files = Array.from(e.target.files || []);
-    const compressed = await Promise.all(files.map((f) => compressImage(f).catch(() => null)));
-    setForm({ ...form, shots: [...(form.shots || []), ...compressed.filter(Boolean)] });
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  }
-  function removeShot(idx) {
-    setForm({ ...form, shots: form.shots.filter((_, i) => i !== idx) });
-  }
- 
-  const willBeCount = todaysCount + 1;
-  const limit = selectedAccount && selectedAccount.maxPerDay ? parseInt(selectedAccount.maxPerDay, 10) : null;
-  let limitBanner = null;
-  if (limit) {
-    if (willBeCount > limit) {
-      limitBanner = { tone: "danger", text: `This exceeds your ${limit}-trade limit for ${selectedAccount.name} today — ${todaysCount} already logged.` };
-    } else if (willBeCount === limit) {
-      limitBanner = { tone: "warn", text: `This will be trade ${willBeCount}/${limit} for ${selectedAccount.name} today — at your limit.` };
-    } else {
-      limitBanner = { tone: "ok", text: `${willBeCount}/${limit} trades used today for ${selectedAccount.name}.` };
-    }
-  }
- 
-  return (
-    <form onSubmit={onSubmit} style={styles.panel}>
-      <div style={styles.formGrid}>
-        <Field label="Account">
-          <select value={form.accountId} onChange={set("accountId")} style={styles.input} required>
-            <option value="" disabled>Select account…</option>
-            {accounts.map((a) => <option key={a.id} value={a.id}>{a.name} ({a.type})</option>)}
-          </select>
-        </Field>
-        <Field label="Date">
-          <input type="date" value={form.date} onChange={set("date")} style={styles.input} required />
-        </Field>
-        <Field label="Entry time (ET)">
-          <input type="time" value={form.entryTime} onChange={set("entryTime")} style={styles.input} required />
-        </Field>
-        <Field label="Direction">
-          <select value={form.direction} onChange={set("direction")} style={styles.input}>
-            <option>Long</option><option>Short</option>
-          </select>
-        </Field>
-        <Field label="Setup / model">
-          <select value={form.setup} onChange={set("setup")} style={styles.input}>
-            {SETUPS.map((s) => <option key={s}>{s}</option>)}
-          </select>
-        </Field>
-        <Field label="Entry price">
-          <input type="number" step="0.25" value={form.entryPrice} onChange={set("entryPrice")} style={styles.input} placeholder="19850.00" required />
-        </Field>
-        <Field label="Stop price">
-          <input type="number" step="0.25" value={form.stopPrice} onChange={set("stopPrice")} style={styles.input} placeholder="19835.00" required />
-        </Field>
-        <Field label="Total contracts">
-          <input type="number" min="1" step="1" value={form.contracts} onChange={set("contracts")} style={styles.input} />
-        </Field>
-        <Field label="State of mind">
-          <select value={form.emotion} onChange={set("emotion")} style={styles.input}>
-            {EMOTIONS.map((s) => <option key={s}>{s}</option>)}
-          </select>
-        </Field>
-        <label style={{ ...styles.field, flexDirection: "row", alignItems: "center", gap: 8, paddingTop: 22 }}>
-          <input type="checkbox" checked={form.followedPlan} onChange={set("followedPlan")} style={{ width: 16, height: 16, accentColor: "#E0A93E" }} />
-          <span style={styles.fieldLabel}>Followed the plan</span>
-        </label>
-      </div>
- 
-      {limitBanner && (
-        <div style={{ ...styles.banner, ...(limitBanner.tone === "danger" ? styles.bannerDanger : limitBanner.tone === "warn" ? styles.bannerWarn : styles.bannerOk) }}>
-          <ShieldAlert size={14} />
-          <span>{limitBanner.text}</span>
-        </div>
-      )}
- 
-      <div style={{ marginTop: 4, marginBottom: 4 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-          <span style={styles.fieldLabel}>Exits (supports partials)</span>
-          <span style={{ fontSize: 11.5, color: remaining > 0 ? "#E0A93E" : "#6B7280" }}>
-            {exitedSum}/{totalContracts || 0} contracts closed{remaining > 0 ? ` · ${remaining} still open` : ""}
-          </span>
-        </div>
-        {(form.exits || []).map((ex) => (
-          <div key={ex.id} style={styles.exitRow}>
-            <input type="number" step="0.25" placeholder="Exit price" value={ex.price} onChange={(e) => updateExit(ex.id, "price", e.target.value)} style={{ ...styles.input, flex: 2 }} />
-            <input type="number" min="1" step="1" placeholder="Contracts" value={ex.contracts} onChange={(e) => updateExit(ex.id, "contracts", e.target.value)} style={{ ...styles.input, flex: 1 }} />
-            <input type="time" value={ex.time} onChange={(e) => updateExit(ex.id, "time", e.target.value)} style={{ ...styles.input, flex: 1 }} />
-            <button type="button" onClick={() => removeExit(ex.id)} style={styles.iconBtn}><X size={14} /></button>
-          </div>
-        ))}
-        <button type="button" onClick={addExit} style={styles.secondaryBtn}><Plus size={13} /> Add exit</button>
-      </div>
- 
-      <Field label="Notes — what confirmed the entry, what you'd change">
-        <textarea value={form.notes} onChange={set("notes")} style={{ ...styles.input, minHeight: 90, resize: "vertical", fontFamily: "'IBM Plex Mono', monospace", fontSize: 13 }} placeholder="Swept Asia low, MSS on 1m, entered on FVG retracement, took 50% at 1R, ran rest to target..." />
-      </Field>
- 
-      <div style={{ marginTop: 4, marginBottom: 14 }}>
-        <span style={styles.fieldLabel}>Screenshots</span>
-        <div style={styles.shotGrid}>
-          {(form.shots || []).map((src, i) => (
-            <div key={i} style={styles.shotThumbWrap}>
-              <img src={src} alt={`screenshot ${i + 1}`} style={styles.shotThumb} />
-              <button type="button" onClick={() => removeShot(i)} style={styles.shotRemove}><X size={12} /></button>
-            </div>
-          ))}
-          <button type="button" onClick={() => fileInputRef.current && fileInputRef.current.click()} style={styles.addShotBtn}>
-            <Camera size={16} />
-            <span style={{ fontSize: 11 }}>Add</span>
-          </button>
-        </div>
-        <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleFiles} style={{ display: "none" }} />
-      </div>
- 
-      {form.entryPrice && form.stopPrice && (form.exits || []).length > 0 && (
-        <div style={styles.previewRow}>
-          <PreviewStat label="R multiple" value={`${preview.r >= 0 ? "+" : ""}${preview.r.toFixed(2)}R`} tone={preview.r > 0 ? "win" : preview.r < 0 ? "loss" : "neutral"} />
-          <PreviewStat label="P&L (closed)" value={`${preview.dollars >= 0 ? "+" : "-"}$${Math.abs(preview.dollars).toFixed(2)}`} tone={preview.dollars > 0 ? "win" : preview.dollars < 0 ? "loss" : "neutral"} />
-          <PreviewStat label="Status" value={preview.isClosed ? "Closed" : "Runner open"} tone="neutral" />
-        </div>
-      )}
- 
-      <div style={styles.formActions}>
-        {editingId && <button type="button" onClick={onCancel} style={styles.secondaryBtn}><X size={14} /> Cancel edit</button>}
-        <button type="submit" style={styles.primaryBtn}>
-          {editingId ? <Check size={14} /> : <Plus size={14} />}
-          {editingId ? "Save changes" : "Add trade"}
+        <button onclick="exportToExcel()" class="bg-ict text-dark px-4 py-2 rounded font-bold hover:opacity-90">
+            Export to Excel (.xlsx)
         </button>
-      </div>
-    </form>
-  );
-}
- 
-function PreviewStat({ label, value, tone }) {
-  const color = tone === "win" ? "#34C77B" : tone === "loss" ? "#F0555F" : "#C7CCD4";
-  return (
-    <div style={styles.previewStat}>
-      <div style={{ fontSize: 11, color: "#6B7280", letterSpacing: "0.04em" }}>{label}</div>
-      <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 20, fontWeight: 600, color }}>{value}</div>
-    </div>
-  );
-}
- 
-function HistoryTable({ trades, accountById, onEdit, onDelete, onViewShots }) {
-  if (trades.length === 0) {
-    return <div style={styles.panel}><div style={styles.muted}>No trades logged yet. Add your first one from the "Log Trade" tab.</div></div>;
-  }
-  return (
-    <div style={{ ...styles.panel, padding: 0, overflowX: "auto" }} className="icj-scroll">
-      <table style={styles.table}>
-        <thead>
-          <tr>
-            {["Date", "Time", "Account", "Dir", "Setup", "Entry", "Stop", "Closed", "R", "P&L", "Plan", "Shots", ""].map((h) => (
-              <th key={h} style={styles.th}>{h}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {trades.slice().reverse().map((t) => {
-            const m = computeMetrics(t);
-            const color = m.r > 0 ? "#34C77B" : m.r < 0 ? "#F0555F" : "#8891A0";
-            const acct = accountById[t.accountId];
-            return (
-              <tr key={t.id} style={styles.tr}>
-                <td style={styles.td}>{t.date}</td>
-                <td style={{ ...styles.td, fontFamily: "'IBM Plex Mono', monospace" }}>{t.entryTime}</td>
-                <td style={{ ...styles.td, fontSize: 12 }}>{acct ? acct.name : "—"}</td>
-                <td style={styles.td}>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: t.direction === "Long" ? "#34C77B" : "#F0555F" }}>
-                    {t.direction === "Long" ? <TrendingUp size={13} /> : <TrendingDown size={13} />}{t.direction}
-                  </span>
-                </td>
-                <td style={styles.td}>{t.setup}</td>
-                <td style={{ ...styles.td, fontFamily: "'IBM Plex Mono', monospace" }}>{t.entryPrice}</td>
-                <td style={{ ...styles.td, fontFamily: "'IBM Plex Mono', monospace" }}>{t.stopPrice}</td>
-                <td style={{ ...styles.td, fontSize: 12 }}>{m.exitedContracts}/{m.totalContracts}{!m.isClosed && m.exitedContracts > 0 ? " ⚡" : ""}</td>
-                <td style={{ ...styles.td, fontFamily: "'IBM Plex Mono', monospace", color, fontWeight: 600 }}>{m.exitedContracts ? `${m.r >= 0 ? "+" : ""}${m.r.toFixed(2)}` : "—"}</td>
-                <td style={{ ...styles.td, fontFamily: "'IBM Plex Mono', monospace", color }}>{m.exitedContracts ? `${m.dollars >= 0 ? "+" : "-"}$${Math.abs(m.dollars).toFixed(2)}` : "—"}</td>
-                <td style={styles.td}>{t.followedPlan ? <Check size={14} color="#34C77B" /> : <X size={14} color="#F0555F" />}</td>
-                <td style={styles.td}>
-                  <button onClick={() => onViewShots(t)} style={styles.iconBtn} aria-label="View screenshots"><Camera size={14} /></button>
-                </td>
-                <td style={{ ...styles.td, whiteSpace: "nowrap" }}>
-                  <button onClick={() => onEdit(t)} style={styles.iconBtn} aria-label="Edit"><Pencil size={13} /></button>
-                  <button onClick={() => onDelete(t.id)} style={styles.iconBtn} aria-label="Delete"><Trash2 size={13} /></button>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
-}
- 
-function Lightbox({ data, onClose, onIndex }) {
-  const { shots, index } = data;
-  if (!shots || shots.length === 0) {
-    return (
-      <div style={styles.lightboxBackdrop} onClick={onClose}>
-        <div style={styles.lightboxEmpty} onClick={(e) => e.stopPropagation()}>
-          <ImageOff size={28} color="#6B7280" />
-          <div style={{ color: "#8891A0", fontSize: 13, marginTop: 8 }}>No screenshots on this trade.</div>
-          <button onClick={onClose} style={{ ...styles.secondaryBtn, marginTop: 14 }}>Close</button>
+    </header>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- LOGGING FORM -->
+        <div class="lg:col-span-1 bg-panel p-6 rounded-xl border border-border">
+            <h2 class="text-lg font-bold mb-4 text-gray-400">Log a Trade</h2>
+            <form id="tradeForm" class="space-y-4">
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs text-gray-500 block mb-1">Date</label>
+                        <input type="date" id="date" required>
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500 block mb-1">Time Entered (ET)</label>
+                        <input type="time" id="time" required>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs text-gray-500 block mb-1">Account Firm</label>
+                        <select id="firm">
+                            <option>Lucid</option>
+                            <option>Alpha</option>
+                            <option>Apex</option>
+                            <option>Personal</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500 block mb-1">Account Type</label>
+                        <select id="accType">
+                            <option>Eval</option>
+                            <option>Funded</option>
+                            <option>Live</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="text-xs text-gray-500 block mb-1">News Impact</label>
+                    <select id="news">
+                        <option>Low / None</option>
+                        <option>Medium (Orange)</option>
+                        <option>High (Red)</option>
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-3 gap-2">
+                    <label class="flex items-center space-x-2 text-sm bg-dark p-2 rounded border border-border cursor-pointer">
+                        <input type="checkbox" value="Liquidity Sweep" class="ict-tags accent-ict"> <span>Sweep</span>
+                    </label>
+                    <label class="flex items-center space-x-2 text-sm bg-dark p-2 rounded border border-border cursor-pointer">
+                        <input type="checkbox" value="iFVG" class="ict-tags accent-ict"> <span>iFVG</span>
+                    </label>
+                    <label class="flex items-center space-x-2 text-sm bg-dark p-2 rounded border border-border cursor-pointer">
+                        <input type="checkbox" value="HTF PD Array" class="ict-tags accent-ict"> <span>PD Array</span>
+                    </label>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs text-gray-500 block mb-1">Entry Price</label>
+                        <input type="number" step="0.25" id="entry" required>
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500 block mb-1">Final Exit Price</label>
+                        <input type="number" step="0.25" id="exit" required>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="text-xs text-gray-500 block mb-1">Partials Taken (Prices separated by commas)</label>
+                    <input type="text" id="partials" placeholder="e.g. 19850, 19865">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs text-gray-500 block mb-1">Profit/Loss ($)</label>
+                        <input type="number" id="pnl" required placeholder="e.g. -150 or 400">
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500 block mb-1">Average RR</label>
+                        <input type="number" step="0.1" id="rr" required placeholder="e.g. 2.5">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="text-xs text-gray-500 block mb-1">Market/AI Analysis & Thought Process</label>
+                    <textarea id="notes" rows="3" placeholder="What confirmed the entry?"></textarea>
+                </div>
+
+                <button type="submit" class="w-full bg-ict text-dark font-bold py-3 rounded-lg hover:bg-yellow-500 transition">
+                    Log Trade
+                </button>
+            </form>
         </div>
-      </div>
-    );
-  }
-  return (
-    <div style={styles.lightboxBackdrop} onClick={onClose}>
-      <div style={styles.lightboxBody} onClick={(e) => e.stopPropagation()}>
-        <img src={shots[index]} alt={`screenshot ${index + 1}`} style={styles.lightboxImg} />
-        <div style={styles.lightboxBar}>
-          <span style={{ fontSize: 12, color: "#8891A0" }}>{index + 1} / {shots.length}</span>
-          <div style={{ display: "flex", gap: 8 }}>
-            {shots.length > 1 && (
-              <>
-                <button onClick={() => onIndex((index - 1 + shots.length) % shots.length)} style={styles.secondaryBtn}>Prev</button>
-                <button onClick={() => onIndex((index + 1) % shots.length)} style={styles.secondaryBtn}>Next</button>
-              </>
-            )}
-            <button onClick={onClose} style={styles.primaryBtn}>Close</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
- 
-function Stats({ stats, accountById }) {
-  if (!stats) return <div style={styles.panel}><div style={styles.muted}>Log a few trades and your stats will build out here.</div></div>;
-  const { wins, losses, be, totalR, totalDollars, avgR, followed, equity, withM, closed, bySetup } = stats;
-  const winRate = closed.length ? (wins / closed.length) * 100 : 0;
- 
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <div style={styles.statRow}>
-        <StatCard label="Win rate" value={`${winRate.toFixed(0)}%`} sub={`${wins}W ${losses}L ${be}BE`} />
-        <StatCard label="Total R" value={`${totalR >= 0 ? "+" : ""}${totalR.toFixed(2)}R`} tone={totalR >= 0 ? "win" : "loss"} />
-        <StatCard label="Avg R / trade" value={`${avgR >= 0 ? "+" : ""}${avgR.toFixed(2)}R`} tone={avgR >= 0 ? "win" : "loss"} />
-        <StatCard label="Net P&L" value={`${totalDollars >= 0 ? "+" : "-"}$${Math.abs(totalDollars).toFixed(2)}`} tone={totalDollars >= 0 ? "win" : "loss"} />
-        <StatCard label="Plan adherence" value={`${((followed / withM.length) * 100).toFixed(0)}%`} sub={`${followed}/${withM.length} trades`} />
-      </div>
- 
-      <div style={styles.panel}>
-        <div style={styles.panelTitle}>Equity curve — cumulative R (closed trades)</div>
-        <div style={{ width: "100%", height: 220 }}>
-          <ResponsiveContainer>
-            <LineChart data={equity} margin={{ top: 8, right: 12, bottom: 0, left: -18 }}>
-              <CartesianGrid stroke="#1F242C" vertical={false} />
-              <XAxis dataKey="i" stroke="#6B7280" fontSize={11} tickLine={false} axisLine={{ stroke: "#1F242C" }} />
-              <YAxis stroke="#6B7280" fontSize={11} tickLine={false} axisLine={{ stroke: "#1F242C" }} />
-              <ReferenceLine y={0} stroke="#2A303A" />
-              <Tooltip contentStyle={{ background: "#12151B", border: "1px solid #1F242C", borderRadius: 6, fontFamily: "'IBM Plex Mono', monospace", fontSize: 12 }} labelFormatter={(l) => `Trade #${l}`} formatter={(v) => [`${v}R`, "Cumulative"]} />
-              <Line type="monotone" dataKey="r" stroke="#E0A93E" strokeWidth={2} dot={{ r: 3, fill: "#E0A93E" }} activeDot={{ r: 5 }} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
- 
-      <div style={styles.panel}>
-        <div style={styles.panelTitle}>NY AM killzone — entry timing (09:30–11:00 ET)</div>
-        <KillzoneTimeline trades={withM} />
-      </div>
- 
-      <div style={styles.panel}>
-        <div style={styles.panelTitle}>Performance by setup</div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {Object.entries(bySetup).sort((a, b) => b[1].r - a[1].r).map(([setup, d]) => (
-            <div key={setup} style={styles.setupRow}>
-              <div style={{ width: 120, fontSize: 13, color: "#C7CCD4" }}>{setup}</div>
-              <div style={styles.setupBarTrack}>
-                <div style={{ ...styles.setupBarFill, width: `${Math.min(100, Math.abs(d.r) * 8)}%`, background: d.r >= 0 ? "#34C77B" : "#F0555F" }} />
-              </div>
-              <div style={{ width: 90, textAlign: "right", fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, color: d.r >= 0 ? "#34C77B" : "#F0555F" }}>{d.r >= 0 ? "+" : ""}{d.r.toFixed(2)}R</div>
-              <div style={{ width: 60, textAlign: "right", fontSize: 12, color: "#6B7280" }}>{d.count}x</div>
+
+        <!-- DASHBOARD & STATS -->
+        <div class="lg:col-span-2 space-y-6">
+            
+            <div class="grid grid-cols-3 gap-4">
+                <div class="bg-panel p-4 rounded-xl border border-border text-center">
+                    <p class="text-xs text-gray-500 tracking-wider">TOTAL TRADES</p>
+                    <p id="stat-total" class="text-3xl font-mono font-bold mt-1">0</p>
+                </div>
+                <div class="bg-panel p-4 rounded-xl border border-border text-center">
+                    <p class="text-xs text-gray-500 tracking-wider">WIN RATE</p>
+                    <p id="stat-wr" class="text-3xl font-mono font-bold mt-1">0%</p>
+                </div>
+                <div class="bg-panel p-4 rounded-xl border border-border text-center">
+                    <p class="text-xs text-gray-500 tracking-wider">NET PNL</p>
+                    <p id="stat-pnl" class="text-3xl font-mono font-bold mt-1">$0</p>
+                </div>
             </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
- 
-function KillzoneTimeline({ trades }) {
-  const marks = ["09:30", "10:00", "10:30", "11:00"];
-  return (
-    <div style={{ paddingTop: 8 }}>
-      <div style={styles.timelineTrack}>
-        <div style={styles.timelineSilverBullet} />
-        {trades.map((t) => {
-          const pct = timeToPct(t.entryTime);
-          const color = t.m.r > 0 ? "#34C77B" : t.m.r < 0 ? "#F0555F" : "#8891A0";
-          return <div key={t.id} title={`${t.entryTime} · ${t.setup} · ${t.m.exitedContracts ? `${t.m.r >= 0 ? "+" : ""}${t.m.r.toFixed(2)}R` : "open"}`} style={{ ...styles.timelineDot, left: `${pct}%`, background: color, boxShadow: `0 0 0 3px ${color}22` }} />;
-        })}
-      </div>
-      <div style={styles.timelineLabels}>{marks.map((m) => <span key={m}>{m}</span>)}</div>
-      <div style={{ fontSize: 11, color: "#6B7280", marginTop: 6 }}><span style={{ color: "#E0A93E" }}>■</span> shaded band marks the 10:00–10:10 Silver Bullet window</div>
-    </div>
-  );
-}
- 
-function StatCard({ label, value, sub, tone }) {
-  const color = tone === "win" ? "#34C77B" : tone === "loss" ? "#F0555F" : "#E7EAEE";
-  return (
-    <div style={styles.statCard}>
-      <div style={{ fontSize: 11, color: "#6B7280", letterSpacing: "0.04em", marginBottom: 6 }}>{label.toUpperCase()}</div>
-      <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 24, fontWeight: 600, color }}>{value}</div>
-      {sub && <div style={{ fontSize: 11, color: "#6B7280", marginTop: 4 }}>{sub}</div>}
-    </div>
-  );
-}
- 
-function RulesTab({ accounts, setAccounts, playbook, setPlaybook }) {
-  const [newAccount, setNewAccount] = useState({ name: "", type: "Eval", maxPerDay: DEFAULT_MAX_BY_TYPE.Eval });
-  const [newRule, setNewRule] = useState("");
- 
-  function addAccount(e) {
-    e.preventDefault();
-    if (!newAccount.name.trim()) return;
-    setAccounts([...accounts, { id: uid(), name: newAccount.name.trim(), type: newAccount.type, maxPerDay: newAccount.maxPerDay }]);
-    setNewAccount({ name: "", type: "Eval", maxPerDay: DEFAULT_MAX_BY_TYPE.Eval });
-  }
-  function updateAccount(id, key, val) {
-    setAccounts(accounts.map((a) => (a.id === id ? { ...a, [key]: val } : a)));
-  }
-  function removeAccount(id) {
-    setAccounts(accounts.filter((a) => a.id !== id));
-  }
-  function addRule(e) {
-    e.preventDefault();
-    if (!newRule.trim()) return;
-    setPlaybook([...playbook, newRule.trim()]);
-    setNewRule("");
-  }
-  function removeRule(i) {
-    setPlaybook(playbook.filter((_, idx) => idx !== i));
-  }
- 
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <div style={styles.panel}>
-        <div style={styles.panelTitle}>Accounts &amp; daily trade limits</div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 14 }}>
-          {accounts.map((a) => (
-            <div key={a.id} style={styles.accountRow}>
-              <input value={a.name} onChange={(e) => updateAccount(a.id, "name", e.target.value)} style={{ ...styles.input, flex: 2 }} />
-              <select value={a.type} onChange={(e) => updateAccount(a.id, "type", e.target.value)} style={{ ...styles.input, flex: 1 }}>
-                {ACCOUNT_TYPES.map((t) => <option key={t}>{t}</option>)}
-              </select>
-              <input type="number" min="0" placeholder="No limit" value={a.maxPerDay} onChange={(e) => updateAccount(a.id, "maxPerDay", e.target.value)} style={{ ...styles.input, flex: 1 }} />
-              <button onClick={() => removeAccount(a.id)} style={styles.iconBtn}><Trash2 size={14} /></button>
+
+            <div class="bg-panel p-6 rounded-xl border border-border">
+                <h2 class="text-sm text-gray-400 mb-4 font-bold">Win Rate & Performance History</h2>
+                <canvas id="wrChart" height="100"></canvas>
             </div>
-          ))}
-          {accounts.length === 0 && <div style={styles.muted}>No accounts yet — add your first below.</div>}
-        </div>
-        <form onSubmit={addAccount} style={styles.accountRow}>
-          <input placeholder="Account name, e.g. Eval 50k #1" value={newAccount.name} onChange={(e) => setNewAccount({ ...newAccount, name: e.target.value })} style={{ ...styles.input, flex: 2 }} />
-          <select value={newAccount.type} onChange={(e) => setNewAccount({ ...newAccount, type: e.target.value, maxPerDay: DEFAULT_MAX_BY_TYPE[e.target.value] })} style={{ ...styles.input, flex: 1 }}>
-            {ACCOUNT_TYPES.map((t) => <option key={t}>{t}</option>)}
-          </select>
-          <input type="number" min="0" placeholder="Max/day" value={newAccount.maxPerDay} onChange={(e) => setNewAccount({ ...newAccount, maxPerDay: e.target.value })} style={{ ...styles.input, flex: 1 }} />
-          <button type="submit" style={styles.primaryBtn}><Plus size={14} /> Add</button>
-        </form>
-        <div style={{ fontSize: 11.5, color: "#6B7280", marginTop: 10 }}>Leave "max/day" blank for no limit. Eval accounts default to 2/day — edit anytime.</div>
-      </div>
- 
-      <div style={styles.panel}>
-        <div style={styles.panelTitle}>Playbook rules</div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
-          {playbook.map((r, i) => (
-            <div key={i} style={styles.ruleRow}>
-              <span style={{ fontSize: 13, color: "#C7CCD4" }}>{r}</span>
-              <button onClick={() => removeRule(i)} style={styles.iconBtn}><X size={13} /></button>
+
+            <div class="bg-panel rounded-xl border border-border overflow-hidden overflow-x-auto">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-dark text-gray-500 text-xs uppercase">
+                        <tr>
+                            <th class="p-4">Date/Time</th>
+                            <th class="p-4">Account</th>
+                            <th class="p-4">Tags</th>
+                            <th class="p-4">PnL</th>
+                            <th class="p-4">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tradeTable" class="divide-y divide-border">
+                        <!-- Trades injected here -->
+                    </tbody>
+                </table>
             </div>
-          ))}
-          {playbook.length === 0 && <div style={styles.muted}>No rules yet.</div>}
+
         </div>
-        <form onSubmit={addRule} style={{ display: "flex", gap: 8 }}>
-          <input placeholder="e.g. No trading during red news" value={newRule} onChange={(e) => setNewRule(e.target.value)} style={{ ...styles.input, flex: 1 }} />
-          <button type="submit" style={styles.primaryBtn}><Plus size={14} /> Add rule</button>
-        </form>
-      </div>
     </div>
-  );
-}
- 
-const styles = {
-  app: { background: "#0A0C10", color: "#E7EAEE", fontFamily: "'Inter', sans-serif", minHeight: "100%", padding: "20px 20px 32px", borderRadius: 12 },
-  header: { display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 18, flexWrap: "wrap", gap: 8 },
-  eyebrow: { fontSize: 11, letterSpacing: "0.12em", color: "#E0A93E", fontFamily: "'IBM Plex Mono', monospace", marginBottom: 4 },
-  title: { margin: 0, fontSize: 24, fontWeight: 700, letterSpacing: "-0.01em", fontFamily: "'IBM Plex Mono', monospace" },
-  saveIndicator: { fontSize: 11, color: "#6B7280", fontFamily: "'IBM Plex Mono', monospace" },
-  tabs: { display: "flex", gap: 6, marginBottom: 16, borderBottom: "1px solid #1F242C", flexWrap: "wrap" },
-  tabBtn: { display: "flex", alignItems: "center", gap: 6, background: "transparent", border: "none", borderBottom: "2px solid transparent", color: "#8891A0", fontSize: 13, fontWeight: 500, padding: "8px 10px", cursor: "pointer", fontFamily: "'Inter', sans-serif" },
-  tabBtnActive: { color: "#E7EAEE", borderBottom: "2px solid #E0A93E" },
-  main: { display: "flex", flexDirection: "column", gap: 16 },
-  panel: { background: "#12151B", border: "1px solid #1F242C", borderRadius: 10, padding: 18 },
-  panelTitle: { fontSize: 13, color: "#8891A0", marginBottom: 12, fontWeight: 500 },
-  muted: { color: "#6B7280", fontSize: 13, padding: "12px 4px" },
-  formGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 14, marginBottom: 14 },
-  field: { display: "flex", flexDirection: "column", gap: 6 },
-  fieldLabel: { fontSize: 11.5, color: "#8891A0" },
-  input: { background: "#0D1015", border: "1px solid #232833", borderRadius: 6, color: "#E7EAEE", padding: "9px 10px", fontSize: 13.5, width: "100%" },
-  banner: { display: "flex", alignItems: "center", gap: 8, padding: "9px 12px", borderRadius: 7, fontSize: 12.5, marginBottom: 14 },
-  bannerDanger: { background: "#F0555F14", border: "1px solid #F0555F44", color: "#F0959B" },
-  bannerWarn: { background: "#E0A93E14", border: "1px solid #E0A93E44", color: "#E0C287" },
-  bannerOk: { background: "#34C77B10", border: "1px solid #34C77B33", color: "#8FD9AE" },
-  exitRow: { display: "flex", gap: 8, marginBottom: 8, alignItems: "center" },
-  shotGrid: { display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 },
-  shotThumbWrap: { position: "relative", width: 64, height: 64 },
-  shotThumb: { width: 64, height: 64, objectFit: "cover", borderRadius: 6, border: "1px solid #232833" },
-  shotRemove: { position: "absolute", top: -6, right: -6, background: "#1A1E25", border: "1px solid #2A303A", borderRadius: "50%", width: 18, height: 18, display: "flex", alignItems: "center", justifyContent: "center", color: "#E7EAEE", cursor: "pointer" },
-  addShotBtn: { width: 64, height: 64, borderRadius: 6, border: "1px dashed #2A303A", background: "transparent", color: "#6B7280", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, cursor: "pointer" },
-  previewRow: { display: "flex", gap: 24, marginTop: 4, marginBottom: 16, padding: "14px 4px", borderTop: "1px solid #1F242C" },
-  previewStat: { display: "flex", flexDirection: "column", gap: 2 },
-  formActions: { display: "flex", justifyContent: "flex-end", gap: 8 },
-  primaryBtn: { display: "flex", alignItems: "center", gap: 6, background: "#E0A93E", color: "#0A0C10", border: "none", borderRadius: 7, padding: "10px 16px", fontSize: 13.5, fontWeight: 600, cursor: "pointer" },
-  secondaryBtn: { display: "flex", alignItems: "center", gap: 6, background: "transparent", color: "#8891A0", border: "1px solid #232833", borderRadius: 7, padding: "10px 16px", fontSize: 13.5, cursor: "pointer" },
-  table: { width: "100%", borderCollapse: "collapse", minWidth: 900 },
-  th: { textAlign: "left", fontSize: 10.5, color: "#6B7280", fontWeight: 600, letterSpacing: "0.05em", padding: "12px 14px", borderBottom: "1px solid #1F242C", whiteSpace: "nowrap" },
-  tr: { borderBottom: "1px solid #171B21" },
-  td: { padding: "11px 14px", fontSize: 13, color: "#C7CCD4" },
-  iconBtn: { background: "transparent", border: "none", color: "#6B7280", cursor: "pointer", padding: 5, marginRight: 2, borderRadius: 4 },
-  statRow: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12 },
-  statCard: { background: "#12151B", border: "1px solid #1F242C", borderRadius: 10, padding: "14px 16px" },
-  setupRow: { display: "flex", alignItems: "center", gap: 10 },
-  setupBarTrack: { flex: 1, height: 6, background: "#1A1E25", borderRadius: 4, overflow: "hidden" },
-  setupBarFill: { height: "100%", borderRadius: 4 },
-  timelineTrack: { position: "relative", height: 44, background: "#0D1015", border: "1px solid #1F242C", borderRadius: 8, marginBottom: 6 },
-  timelineSilverBullet: { position: "absolute", left: "16.6%", width: "8.3%", top: 0, bottom: 0, background: "#E0A93E14", borderLeft: "1px dashed #E0A93E44", borderRight: "1px dashed #E0A93E44" },
-  timelineDot: { position: "absolute", top: "50%", width: 10, height: 10, borderRadius: "50%", transform: "translate(-50%, -50%)", cursor: "pointer" },
-  timelineLabels: { display: "flex", justifyContent: "space-between", fontSize: 10.5, color: "#6B7280", fontFamily: "'IBM Plex Mono', monospace" },
-  accountRow: { display: "flex", gap: 8, alignItems: "center" },
-  ruleRow: { display: "flex", justifyContent: "space-between", alignItems: "center", background: "#0D1015", border: "1px solid #1F242C", borderRadius: 6, padding: "8px 12px" },
-  lightboxBackdrop: { position: "fixed", inset: 0, background: "#000000CC", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 20 },
-  lightboxBody: { background: "#12151B", border: "1px solid #1F242C", borderRadius: 10, padding: 12, maxWidth: "90vw", maxHeight: "90vh", display: "flex", flexDirection: "column", gap: 10 },
-  lightboxImg: { maxWidth: "84vw", maxHeight: "72vh", objectFit: "contain", borderRadius: 6 },
-  lightboxBar: { display: "flex", justifyContent: "space-between", alignItems: "center" },
-  lightboxEmpty: { background: "#12151B", border: "1px solid #1F242C", borderRadius: 10, padding: 32, display: "flex", flexDirection: "column", alignItems: "center" },
-};
- 
+
+    <script>
+        let trades = JSON.parse(localStorage.getItem('ict_trades')) || [];
+        let chartInstance = null;
+
+        document.getElementById('tradeForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const tags = Array.from(document.querySelectorAll('.ict-tags:checked')).map(cb => cb.value).join(', ');
+
+            const newTrade = {
+                id: Date.now(),
+                date: document.getElementById('date').value,
+                time: document.getElementById('time').value,
+                firm: document.getElementById('firm').value,
+                accType: document.getElementById('accType').value,
+                news: document.getElementById('news').value,
+                tags: tags,
+                entry: document.getElementById('entry').value,
+                exit: document.getElementById('exit').value,
+                partials: document.getElementById('partials').value,
+                pnl: parseFloat(document.getElementById('pnl').value),
+                rr: document.getElementById('rr').value,
+                notes: document.getElementById('notes').value
+            };
+
+            trades.push(newTrade);
+            localStorage.setItem('ict_trades', JSON.stringify(trades));
+            this.reset();
+            updateDashboard();
+        });
+
+        function deleteTrade(id) {
+            trades = trades.filter(t => t.id !== id);
+            localStorage.setItem('ict_trades', JSON.stringify(trades));
+            updateDashboard();
+        }
+
+        function updateDashboard() {
+            // Table
+            const tbody = document.getElementById('tradeTable');
+            tbody.innerHTML = '';
+            trades.slice().reverse().forEach(t => {
+                const color = t.pnl >= 0 ? 'text-green-500' : 'text-red-500';
+                tbody.innerHTML += `
+                    <tr>
+                        <td class="p-4 font-mono">${t.date} ${t.time}</td>
+                        <td class="p-4">${t.firm} <span class="text-xs text-gray-500">(${t.accType})</span></td>
+                        <td class="p-4 text-xs">${t.tags || '-'}</td>
+                        <td class="p-4 font-mono font-bold ${color}">${t.pnl >= 0 ? '+' : ''}$${t.pnl}</td>
+                        <td class="p-4">
+                            <button onclick="deleteTrade(${t.id})" class="text-red-500 hover:text-red-400">Delete</button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            // Stats
+            const total = trades.length;
+            const wins = trades.filter(t => t.pnl > 0).length;
+            const wr = total === 0 ? 0 : Math.round((wins / total) * 100);
+            const netPnl = trades.reduce((sum, t) => sum + t.pnl, 0);
+
+            document.getElementById('stat-total').innerText = total;
+            document.getElementById('stat-wr').innerText = `${wr}%`;
+            document.getElementById('stat-pnl').innerText = `${netPnl >= 0 ? '+' : ''}$${netPnl}`;
+            document.getElementById('stat-pnl').className = `text-3xl font-mono font-bold mt-1 ${netPnl >= 0 ? 'text-green-500' : 'text-red-500'}`;
+
+            // Chart
+            updateChart();
+        }
+
+        function updateChart() {
+            const ctx = document.getElementById('wrChart').getContext('2d');
+            const labels = trades.map((_, i) => `Trade ${i + 1}`);
+            
+            let cumulative = 0;
+            const data = trades.map(t => {
+                cumulative += t.pnl;
+                return cumulative;
+            });
+
+            if(chartInstance) chartInstance.destroy();
+
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Cumulative PnL ($)',
+                        data: data,
+                        borderColor: '#E0A93E',
+                        backgroundColor: 'rgba(224, 169, 62, 0.1)',
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: { grid: { color: '#1F242C' }, ticks: { color: '#8891A0' } },
+                        x: { grid: { display: false }, ticks: { color: '#8891A0' } }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        function exportToExcel() {
+            if(trades.length === 0) return alert("No trades to export!");
+            // Clean up the data for Excel
+            const excelData = trades.map(t => ({
+                "Date": t.date,
+                "Time (ET)": t.time,
+                "Firm": t.firm,
+                "Account Type": t.accType,
+                "News Impact": t.news,
+                "ICT Setups": t.tags,
+                "Entry Price": t.entry,
+                "Final Exit": t.exit,
+                "Partials": t.partials,
+                "PnL ($)": t.pnl,
+                "Avg RR": t.rr,
+                "Analysis Notes": t.notes
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(excelData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "ICT Journal");
+            XLSX.writeFile(workbook, "Trading_Journal.xlsx");
+        }
+
+        // Init
+        updateDashboard();
+    </script>
+</body>
+</html>
