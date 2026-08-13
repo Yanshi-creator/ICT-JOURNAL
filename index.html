@@ -132,6 +132,16 @@
         /* Right Panel */
         .right-panel { display: flex; flex-direction: column; gap: 20px; }
         
+        /* Portfolio Settings Strip */
+        .settings-strip {
+            display: flex;
+            gap: 15px;
+            background-color: var(--bg-panel);
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+        }
+        
         .stats-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
         .stat-card {
             background-color: var(--bg-panel); padding: 14px 10px; border-radius: 12px;
@@ -330,6 +340,23 @@
 
         <!-- RIGHT PANEL -->
         <div class="right-panel">
+            
+            <!-- PORTFOLIO SETTINGS STRIP -->
+            <div class="settings-strip">
+                <div class="form-group">
+                    <label>Starting Balance ($)</label>
+                    <input type="number" id="sBaseBalance" onchange="saveSettings()" placeholder="e.g. 50000">
+                </div>
+                <div class="form-group">
+                    <label>Profit Target / Goal ($)</label>
+                    <input type="number" id="sTargetGoal" onchange="saveSettings()" placeholder="e.g. 3000">
+                </div>
+                <div class="form-group">
+                    <label>Number of Active Evals</label>
+                    <input type="number" id="sEvalCount" onchange="saveSettings()" placeholder="e.g. 20">
+                </div>
+            </div>
+
             <!-- STATS GRID -->
             <div class="stats-grid">
                 <div class="stat-card">
@@ -344,16 +371,16 @@
                     <h4>Net PNL</h4>
                     <div class="value" id="netPnl">$0</div>
                 </div>
-                <!-- DYNAMIC EVAL BALANCE CARD -->
+                <!-- DYNAMIC ACCOUNT BALANCE CARD -->
                 <div class="stat-card">
-                    <h4>Account Balance</h4>
-                    <div class="value" id="accountBalance">$50,000</div>
+                    <h4>Current Balance</h4>
+                    <div class="value" id="accountBalance">$0</div>
                 </div>
                 <!-- EVAL PROGRESS TRACKER -->
                 <div class="stat-card">
                     <h4 id="evalTitle">Eval Progress</h4>
                     <div class="progress-container"><div class="progress-bar" id="progressBar"></div></div>
-                    <span class="progress-text" id="progressText">$0 / $3,000</span>
+                    <span class="progress-text" id="progressText">$0 / $0</span>
                 </div>
             </div>
 
@@ -405,9 +432,25 @@
 
         // Core Data Storage (LocalStorage)
         let tradesData = JSON.parse(localStorage.getItem('ictJournal')) || [];
+        let portfolioSettings = JSON.parse(localStorage.getItem('ictSettings')) || {
+            baseBalance: 50000,
+            targetGoal: 3000,
+            evalCount: 1
+        };
         let pnlChartInstance = null;
 
-        const BASE_EVAL_BALANCE = 50000;
+        // Initialize Settings Inputs
+        document.getElementById('sBaseBalance').value = portfolioSettings.baseBalance;
+        document.getElementById('sTargetGoal').value = portfolioSettings.targetGoal;
+        document.getElementById('sEvalCount').value = portfolioSettings.evalCount;
+
+        function saveSettings() {
+            portfolioSettings.baseBalance = parseFloat(document.getElementById('sBaseBalance').value) || 0;
+            portfolioSettings.targetGoal = parseFloat(document.getElementById('sTargetGoal').value) || 0;
+            portfolioSettings.evalCount = parseInt(document.getElementById('sEvalCount').value) || 0;
+            localStorage.setItem('ictSettings', JSON.stringify(portfolioSettings));
+            renderDashboard(); // Re-render everything with new settings
+        }
 
         function renderDashboard() {
             let totalPnl = 0, wins = 0;
@@ -444,29 +487,30 @@
             netEl.innerText = (totalPnl >= 0 ? "+$" : "-$") + Math.abs(totalPnl);
             netEl.className = totalPnl >= 0 ? "value green" : "value red";
 
-            // Update Account Balance Card (Red if below $50k on Eval, Green if above)
-            const currentBalance = BASE_EVAL_BALANCE + totalPnl;
+            // Update Dynamic Account Balance Card
+            const currentBalance = portfolioSettings.baseBalance + totalPnl;
             const balanceEl = document.getElementById('accountBalance');
             balanceEl.innerText = "$" + currentBalance.toLocaleString();
             
-            if (currentBalance < BASE_EVAL_BALANCE) {
+            // Turns Red if below the starting balance, Green if above or equal
+            if (currentBalance < portfolioSettings.baseBalance) {
                 balanceEl.className = "value red";
             } else {
                 balanceEl.className = "value green";
             }
 
-            // Update Eval Progress Bar ($3K Pass Goal)
-            let prog = (totalPnl / 3000) * 100;
+            // Update Eval Progress Bar using custom Target Goal
+            let prog = (totalPnl / portfolioSettings.targetGoal) * 100;
             if(prog > 100) prog = 100; if(prog < 0) prog = 0;
             document.getElementById('progressBar').style.width = prog + "%";
             
-            if(totalPnl >= 3000) {
+            if(totalPnl >= portfolioSettings.targetGoal) {
                 document.getElementById('progressText').innerText = "Target Hit!";
                 document.getElementById('evalTitle').innerText = "BALANCE REACHED";
                 document.getElementById('evalTitle').classList.add('balance-reached');
                 document.getElementById('progressBar').style.backgroundColor = "var(--accent-gold)";
             } else {
-                document.getElementById('progressText').innerText = "$" + totalPnl + " / $3,000";
+                document.getElementById('progressText').innerText = "$" + totalPnl.toLocaleString() + " / $" + portfolioSettings.targetGoal.toLocaleString();
                 document.getElementById('evalTitle').innerText = "Eval Progress";
                 document.getElementById('evalTitle').classList.remove('balance-reached');
                 document.getElementById('progressBar').style.backgroundColor = "var(--accent-green)";
