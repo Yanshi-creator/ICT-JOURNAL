@@ -345,6 +345,29 @@
                 <label><input type="checkbox" value="iFVG"> iFVG</label>
                 <label><input type="checkbox" value="PD Array"> PD Array</label>
                 <label><input type="checkbox" value="BOS"> BOS</label>
+                <label><input type="checkbox" value="MSS"> MSS</label>
+            </div>
+
+            <!-- NEW: SETUP GRADE AND REASON FOR LOSS -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Setup Grade</label>
+                    <select id="tGrade">
+                        <option>A+ Setup</option>
+                        <option>B Setup</option>
+                        <option>C Setup</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Reason for Loss (If loss)</label>
+                    <select id="tLossReason">
+                        <option>N/A (Win/BE)</option>
+                        <option>FOMO / Impatient</option>
+                        <option>No PD Array</option>
+                        <option>Weak Setup / Forced</option>
+                        <option>Greed / Didn't secure partials</option>
+                    </select>
+                </div>
             </div>
 
             <div class="form-row">
@@ -735,11 +758,20 @@
                 const dateStr = trade.Date; 
                 dailyPnlMap[dateStr] = (dailyPnlMap[dateStr] || 0) + trade.PNL;
 
+                // Safely grab new properties for backwards compatibility
+                const tradeGrade = trade.Grade || 'N/A';
+                const tradeLossReason = trade.LossReason || 'N/A (Win/BE)';
+                
+                // Show red loss reason directly under the setup in history table if applicable
+                const mistakeHtml = (trade.PNL < 0 && tradeLossReason !== 'N/A (Win/BE)') 
+                    ? `<br><span style="color:var(--accent-red); font-size: 0.65rem;">Mistake: ${tradeLossReason}</span>` 
+                    : '';
+
                 // Render Table (Insert newest at top)
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${trade.Date} ${trade.Time}</td>
-                    <td>${trade.Setups}</td>
+                    <td><span style="color:var(--accent-gold); font-weight:700;">[${tradeGrade}]</span> ${trade.Setups} ${mistakeHtml}</td>
                     <td>${trade.RR} R</td>
                     <td style="color:var(--text-muted)">Min: $${currentTrailingThreshold.toLocaleString()}</td>
                     <td class="${trade.PNL >= 0 ? 'text-green' : 'text-red'}">${trade.PNL >= 0 ? '+$' : '-$'}${Math.abs(trade.PNL)}</td>
@@ -904,6 +936,8 @@
                 NewsImpact: document.getElementById('tNewsImpact').value,
                 EmotionBefore: document.getElementById('tEmotionBefore').value,
                 Setups: tags,
+                Grade: document.getElementById('tGrade').value,
+                LossReason: document.getElementById('tLossReason').value,
                 Entry: entryInput.value, StopLoss: stopInput.value, Exit: exitInput.value,
                 RR: currentRR,
                 PNL: pnlValue,
@@ -915,6 +949,7 @@
             
             document.getElementById('pnl').value = ""; document.getElementById('tImprovement').value = "";
             document.getElementById('tPartials').value = ""; entryInput.value = ""; stopInput.value = ""; exitInput.value = ""; rrOutput.value = "";
+            document.getElementById('tGrade').selectedIndex = 0; document.getElementById('tLossReason').selectedIndex = 0;
             cbs.forEach(cb => cb.checked = false);
             renderDashboard();
         }
@@ -935,10 +970,12 @@
 
         function generateAIFeedback(filteredTrades, totalPnl) {
             if(filteredTrades.length < 3) return;
-            let fomo = 0;
-            filteredTrades.forEach(t => { if(t.EmotionBefore.includes("FOMO") || t.EmotionBefore.includes("Revenge")) fomo++; });
+            let mistakes = 0;
+            filteredTrades.forEach(t => { 
+                if((t.EmotionBefore && t.EmotionBefore.includes("FOMO")) || (t.LossReason && t.LossReason.includes("FOMO"))) mistakes++; 
+            });
             let f = "Focus on preserving your trailing buffer.";
-            if(fomo >= 2) f = `FOMO detected on ${fomo} trades. Wait for premium/discount arrays before striking.`;
+            if(mistakes >= 2) f = `Impatience / FOMO detected on ${mistakes} trades. Wait for premium/discount arrays before striking.`;
             else if(totalPnl > 0) f = "Strong execution. Risk control is solid, keep pressing your edge.";
             document.getElementById('aiOutput').innerText = f;
         }
