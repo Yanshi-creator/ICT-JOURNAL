@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trading Journal Platform</title>
+    <title>Sniping Journal | Yanshi Madhavani</title>
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- SheetJS for Excel Export -->
@@ -11,7 +11,6 @@
     
     <style>
         :root {
-            /* REFINED DARK MODE PALETTE */
             --bg-main: #0a0a0c;
             --bg-panel: #131318;
             --bg-input: #1a1a20;
@@ -24,218 +23,61 @@
             --cell-empty: #1f1f26;
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+        body { background-color: var(--bg-main); color: var(--text-main); padding: 25px 35px; }
 
-        body {
-            background-color: var(--bg-main);
-            color: var(--text-main);
-            padding: 25px 35px;
-        }
-
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 25px;
-        }
-
-        .header h4 {
-            font-size: 0.8rem;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            margin-bottom: 5px;
-            font-weight: 700;
-            color: var(--text-muted);
-        }
-        
-        .header h4 a {
-            color: var(--accent-gold);
-            text-decoration: none;
-            transition: opacity 0.2s;
-        }
-        
+        /* Header */
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+        .header h4 { font-size: 0.8rem; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 5px; font-weight: 700; color: var(--text-muted); }
+        .header h4 a { color: var(--accent-gold); text-decoration: none; transition: opacity 0.2s; }
         .header h4 a:hover { opacity: 0.8; }
-
-        .header h1 { 
-            font-size: 1.8rem; 
-            letter-spacing: 1px; 
-            font-weight: 800;
-        }
-
+        .header h1 { font-size: 1.8rem; letter-spacing: 1px; font-weight: 800; }
         .header-actions { display: flex; gap: 12px; align-items: center; }
 
-        .account-switcher {
-            background-color: var(--bg-panel);
-            border: 1px solid var(--accent-gold);
-            color: var(--accent-gold);
-            padding: 8px 14px;
-            border-radius: 6px;
-            font-weight: 600;
-            font-size: 0.9rem;
-            outline: none;
-            cursor: pointer;
-        }
-
-        .btn-secondary {
-            background-color: var(--bg-panel);
-            color: var(--text-main);
-            border: 1px solid var(--border-color);
-            padding: 10px 16px;
-            border-radius: 6px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
+        /* Buttons & Inputs */
+        .account-switcher { background-color: var(--bg-panel); border: 1px solid var(--accent-gold); color: var(--accent-gold); padding: 8px 14px; border-radius: 6px; font-weight: 600; font-size: 0.9rem; outline: none; cursor: pointer; }
+        .btn-secondary { background-color: var(--bg-panel); color: var(--text-main); border: 1px solid var(--border-color); padding: 10px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
         .btn-secondary:hover { border-color: var(--accent-gold); color: var(--accent-gold); }
-
-        .export-btn {
-            background-color: var(--accent-gold);
-            color: #000;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 6px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: opacity 0.2s;
-        }
+        .export-btn { background-color: var(--accent-gold); color: #000; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 700; cursor: pointer; transition: opacity 0.2s; }
         .export-btn:hover { opacity: 0.9; }
 
-        .dashboard {
-            display: grid;
-            grid-template-columns: 440px 1fr;
-            gap: 25px;
-        }
-
-        .log-panel {
-            background-color: var(--bg-panel);
-            padding: 25px;
-            border-radius: 12px;
-            border: 1px solid var(--border-color);
-            display: flex;
-            flex-direction: column;
-            height: fit-content;
-        }
-
-        .log-panel h3 {
-            margin-bottom: 18px;
-            font-size: 1.15rem;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 10px;
-        }
-
+        /* Layout */
+        .dashboard { display: grid; grid-template-columns: 440px 1fr; gap: 25px; }
+        .log-panel { background-color: var(--bg-panel); padding: 25px; border-radius: 12px; border: 1px solid var(--border-color); display: flex; flex-direction: column; height: fit-content; }
+        .log-panel h3 { margin-bottom: 18px; font-size: 1.15rem; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
+        
         .form-row { display: flex; gap: 10px; margin-bottom: 10px; }
         .form-group { flex: 1; display: flex; flex-direction: column; width: 100%; }
+        .form-group label { font-size: 0.72rem; color: var(--text-muted); margin-bottom: 5px; font-weight: 600; }
         
-        .form-group label {
-            font-size: 0.72rem;
-            color: var(--text-muted);
-            margin-bottom: 5px;
-            font-weight: 600;
-        }
-
-        input, select, textarea {
-            width: 100%;
-            background-color: var(--bg-input);
-            border: 1px solid var(--border-color);
-            color: var(--text-main);
-            padding: 8px 10px;
-            border-radius: 6px;
-            outline: none;
-            font-size: 0.85rem;
-            transition: border-color 0.2s;
-        }
-
+        input, select, textarea { width: 100%; background-color: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-main); padding: 8px 10px; border-radius: 6px; outline: none; font-size: 0.85rem; transition: border-color 0.2s; }
         input:focus, select:focus, textarea:focus { border-color: var(--accent-gold); }
         input[readonly] { color: var(--accent-gold); font-weight: bold; background-color: rgba(234, 179, 8, 0.05); cursor: default; }
-        input[type="date"]::-webkit-calendar-picker-indicator,
-        input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); }
+        input[type="date"]::-webkit-calendar-picker-indicator, input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); }
         textarea { resize: vertical; min-height: 40px; }
 
-        /* Pre-Flight Checklist Styling */
-        .checklist-container {
-            background-color: var(--bg-input);
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            padding: 12px;
-            margin-bottom: 10px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-        .checklist-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 6px;
-            margin-bottom: 4px;
-        }
+        /* Checklist */
+        .checklist-container { background-color: var(--bg-input); border: 1px solid var(--border-color); border-radius: 6px; padding: 12px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 10px; }
+        .checklist-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 6px; margin-bottom: 4px; }
         .checklist-header h4 { font-size: 0.75rem; color: var(--text-main); }
         .auto-grade { font-size: 0.9rem; font-weight: 800; color: var(--accent-gold); }
-        .checklist-container label {
-            display: flex; 
-            align-items: flex-start; /* Perfect multi-line alignment */
-            gap: 8px; 
-            font-size: 0.75rem;
-            cursor: pointer; 
-            color: var(--text-muted); 
-            transition: color 0.2s;
-            line-height: 1.4;
-        }
+        .checklist-container label { display: flex; align-items: flex-start; gap: 8px; font-size: 0.75rem; cursor: pointer; color: var(--text-muted); transition: color 0.2s; line-height: 1.4; }
         .checklist-container label:hover { color: var(--text-main); }
-        .checklist-container input[type="checkbox"] {
-            margin-top: 2px;
-            flex-shrink: 0; /* Prevents checkbox from squishing */
-            width: 14px;
-            height: 14px;
-        }
+        .checklist-container input[type="checkbox"] { margin-top: 2px; flex-shrink: 0; width: 14px; height: 14px; }
 
-        .log-btn {
-            background-color: var(--accent-gold); color: #000; border: none;
-            padding: 12px; border-radius: 6px; font-weight: 800; cursor: pointer; margin-top: 10px;
-            transition: opacity 0.2s; font-size: 0.95rem;
-        }
+        .log-btn { background-color: var(--accent-gold); color: #000; border: none; padding: 12px; border-radius: 6px; font-weight: 800; cursor: pointer; margin-top: 10px; transition: opacity 0.2s; font-size: 0.95rem; }
         .log-btn:hover { opacity: 0.9; }
 
-        /* Branding Footer */
-        .brand-footer {
-            margin-top: 25px;
-            text-align: center;
-            border-top: 1px solid var(--border-color);
-            padding-top: 15px;
-        }
-        .custom-quote { 
-            font-size: 0.75rem; 
-            color: var(--text-muted); 
-            font-style: italic;
-            line-height: 1.4;
-        }
-        .quote-author {
-            display: block;
-            margin-top: 6px;
-            font-size: 0.7rem;
-            color: var(--accent-gold);
-            font-weight: 700;
-        }
+        /* Branding Footer - Hardcoded */
+        .brand-footer { margin-top: 25px; text-align: center; border-top: 1px solid var(--border-color); padding-top: 15px; }
+        .custom-quote { font-size: 0.75rem; color: var(--text-muted); font-style: italic; line-height: 1.4; }
+        .quote-author { display: block; margin-top: 6px; font-size: 0.7rem; color: var(--accent-gold); font-weight: 700; }
 
         /* Right Panel */
         .right-panel { display: flex; flex-direction: column; gap: 20px; }
-        
-        .account-config-box {
-            display: flex; gap: 12px; background-color: var(--bg-panel);
-            padding: 15px; border-radius: 12px; border: 1px solid var(--border-color); align-items: flex-end;
-        }
-
+        .account-config-box { display: flex; gap: 12px; background-color: var(--bg-panel); padding: 15px; border-radius: 12px; border: 1px solid var(--border-color); align-items: flex-end; }
         .stats-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
-        .stat-card {
-            background-color: var(--bg-panel); padding: 14px 10px; border-radius: 12px;
-            border: 1px solid var(--border-color); text-align: center;
-        }
+        .stat-card { background-color: var(--bg-panel); padding: 14px 10px; border-radius: 12px; border: 1px solid var(--border-color); text-align: center; }
         .stat-card h4 { color: var(--text-muted); font-size: 0.65rem; text-transform: uppercase; margin-bottom: 6px; font-weight: 700;}
         .stat-card .value { font-size: 1.25rem; font-weight: 800; color: var(--text-main); }
         .value.green { color: var(--accent-green); }
@@ -246,37 +88,28 @@
         .progress-bar.red { background-color: var(--accent-red); }
         .progress-text { font-size: 0.68rem; color: var(--text-muted); margin-top: 5px; display: block; font-weight: 600;}
 
-        /* Mid Section: Calendar & Analysis */
+        /* Calendar & Analysis */
         .mid-section { display: grid; grid-template-columns: 350px 1fr; gap: 20px; }
-        
-        .calendar-container {
-            background-color: var(--bg-panel); border-radius: 12px; border: 1px solid var(--border-color);
-            padding: 15px; display: flex; flex-direction: column;
-        }
+        .calendar-container { background-color: var(--bg-panel); border-radius: 12px; border: 1px solid var(--border-color); padding: 15px; display: flex; flex-direction: column; }
         .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
         .calendar-header h4 { font-size: 0.85rem; color: var(--text-main); }
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
         .day-label { text-align: center; font-size: 0.65rem; color: var(--text-muted); font-weight: 700; margin-bottom: 4px;}
-        .cal-cell {
-            aspect-ratio: 1; border-radius: 4px; background-color: var(--cell-empty);
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            font-size: 0.65rem; font-weight: 600; color: var(--text-muted);
-        }
+        .cal-cell { aspect-ratio: 1; border-radius: 4px; background-color: var(--cell-empty); display: flex; flex-direction: column; justify-content: center; align-items: center; font-size: 0.65rem; font-weight: 600; color: var(--text-muted); text-align: center;}
         .cal-cell.green { background-color: rgba(34, 197, 94, 0.15); color: var(--accent-green); border: 1px solid rgba(34, 197, 94, 0.3);}
         .cal-cell.red { background-color: rgba(239, 68, 68, 0.15); color: var(--accent-red); border: 1px solid rgba(239, 68, 68, 0.3);}
         
-        .analysis-container {
-            background-color: var(--bg-panel); border-radius: 12px; border: 1px solid var(--border-color);
-            padding: 15px; display: flex; flex-direction: column; gap: 15px;
-        }
-        .analysis-container h4 { font-size: 0.85rem; color: var(--accent-gold); margin-bottom: 5px;}
+        .analysis-container { background-color: var(--bg-panel); border-radius: 12px; border: 1px solid var(--border-color); padding: 15px; display: flex; flex-direction: column; gap: 10px; }
+        .analysis-container h4 { font-size: 0.85rem; color: var(--accent-gold); margin-bottom: 0px;}
         .analysis-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .analysis-box { background-color: var(--bg-input); padding: 10px; border-radius: 8px; text-align: center; }
         .analysis-box label { font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;}
         .analysis-box .val { font-size: 1.1rem; font-weight: 800; margin-top: 4px;}
 
+        /* AI Output Box */
+        .ai-output-box { background-color: rgba(234, 179, 8, 0.05); border-left: 3px solid var(--accent-gold); padding: 10px 12px; font-size: 0.75rem; color: var(--text-main); line-height: 1.5; border-radius: 0 4px 4px 0;}
+
         .chart-container { background-color: var(--bg-panel); border-radius: 12px; border: 1px solid var(--border-color); padding: 15px; height: 220px; }
-        
         .table-container { background-color: var(--bg-panel); border-radius: 12px; border: 1px solid var(--border-color); padding: 15px; overflow-x: auto; max-height: 250px; overflow-y: auto;}
         table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
         th { text-align: left; color: var(--text-muted); padding-bottom: 10px; border-bottom: 1px solid var(--border-color); font-weight: 700; }
@@ -286,19 +119,10 @@
         .delete-btn { background-color: transparent; color: var(--accent-red); border: 1px solid var(--accent-red); padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.7rem; font-weight: 600;}
         .delete-btn:hover { background-color: var(--accent-red); color: #fff; }
 
-        /* Modal styling */
-        .modal-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 1000;
-        }
-        .modal {
-            background-color: var(--bg-panel); border: 1px solid var(--border-color);
-            padding: 25px; border-radius: 12px; width: 450px; display: flex; flex-direction: column; gap: 15px;
-            max-height: 90vh; overflow-y: auto;
-        }
+        /* Modals */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 1000; }
+        .modal { background-color: var(--bg-panel); border: 1px solid var(--border-color); padding: 25px; border-radius: 12px; width: 450px; display: flex; flex-direction: column; gap: 15px; max-height: 90vh; overflow-y: auto; }
         .modal h3 { border-bottom: 1px solid var(--border-color); padding-bottom: 10px; color: var(--text-main); }
-        
-        /* Master Settings Lists */
         .settings-rule-list { display: flex; flex-direction: column; gap: 8px; margin-top: 5px; }
         .settings-rule-item { display: flex; gap: 8px; }
         .settings-rule-item input { flex: 1; }
@@ -309,15 +133,15 @@
 
     <div class="header">
         <div>
-            <h4><a href="#" target="_blank" id="displayHandle">@yanshi.snipes</a></h4>
-            <h1 id="displayTitle">YANSHI'S JOURNAL</h1>
+            <h4><a href="https://instagram.com/yanshi.snipes" target="_blank">@yanshi.snipes</a></h4>
+            <h1>SNIPING JOURNAL</h1>
         </div>
         <div class="header-actions">
             <select id="accountSelect" class="account-switcher" onchange="switchAccount()"></select>
             <button class="btn-secondary" onclick="openAddAccountModal()">+ New Account</button>
             <button class="btn-secondary" onclick="copyLatestSnipe()">Copy Latest Snipe</button>
             <button class="export-btn" onclick="exportToExcel()">Export</button>
-            <button class="btn-secondary" onclick="openSettingsModal()">⚙️ Settings</button>
+            <button class="btn-secondary" onclick="openSettingsModal()">⚙️ Rules</button>
         </div>
     </div>
 
@@ -428,17 +252,10 @@
                 </div>
             </div>
 
-            <div class="form-row">
+            <div class="form-row" style="margin-bottom:0;">
                 <div class="form-group">
                     <label>What Could Have Been Done Better?</label>
                     <textarea id="tImprovement" placeholder="Review your execution"></textarea>
-                </div>
-            </div>
-            
-            <div class="form-row" style="margin-bottom:0;">
-                <div class="form-group">
-                    <label>Chart URL (Optional Archive)</label>
-                    <input type="url" id="tChartLink" placeholder="https://www.tradingview.com/x/...">
                 </div>
             </div>
 
@@ -446,8 +263,8 @@
 
             <!-- CUSTOM GROUNDING FOOTER -->
             <div class="brand-footer">
-                <div class="custom-quote" id="displayQuoteText">"It's not a game of getting rich quick so remember the number of times you have lost your accounts chasing that"</div>
-                <span class="quote-author" id="displayQuoteAuthor">- Yanshi Madhavani</span>
+                <div class="custom-quote">"It's not a game of getting rich quick so remember the number of times you have lost your accounts chasing that"</div>
+                <span class="quote-author">- Yanshi Madhavani</span>
             </div>
         </div>
 
@@ -530,8 +347,10 @@
                             <div class="val" id="monthlyPnl">$0</div>
                         </div>
                     </div>
-                    <!-- AI Insight snippet -->
-                    <p id="aiOutput" style="font-size: 0.75rem; color: var(--text-muted); line-height: 1.4; margin-top: 5px;">Log more trades for insights.</p>
+                    <!-- LOCAL ALGORITHMIC AI INSIGHTS -->
+                    <div class="ai-output-box" id="aiOutput">
+                        Log at least 3 trades for algorithmic execution insights.
+                    </div>
                 </div>
             </div>
 
@@ -602,38 +421,12 @@
         </div>
     </div>
 
-    <!-- WHITE-LABEL PLATFORM SETTINGS MODAL -->
+    <!-- RULES SETTINGS MODAL -->
     <div class="modal-overlay" id="settingsModal">
         <div class="modal">
-            <h3>Platform Settings</h3>
-            
+            <h3>Checklist Rules</h3>
+            <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:10px;">Customize your Pre-Flight alignment rules. This dictates your A+ setup grade.</p>
             <div class="form-group">
-                <label>Platform Title</label>
-                <input type="text" id="sPlatformTitle">
-            </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Social Handle Display</label>
-                    <input type="text" id="sHandle">
-                </div>
-                <div class="form-group">
-                    <label>Social Link URL</label>
-                    <input type="text" id="sHandleLink">
-                </div>
-            </div>
-            <div class="form-group">
-                <label>Footer Quote (Grounding Psychology)</label>
-                <textarea id="sQuoteText" rows="3"></textarea>
-            </div>
-            <div class="form-group">
-                <label>Quote Author</label>
-                <input type="text" id="sQuoteAuthor">
-            </div>
-
-            <hr style="border:none; border-top:1px solid var(--border-color); margin: 5px 0;">
-            
-            <div class="form-group">
-                <label>Custom Pre-Flight Checklist</label>
                 <div class="settings-rule-list" id="settingsChecklist">
                     <!-- Rules populated by JS -->
                 </div>
@@ -641,7 +434,7 @@
             </div>
 
             <div style="display:flex; gap:10px; margin-top:10px;">
-                <button class="log-btn" style="flex:1;" onclick="savePlatformSettings()">Save Master Settings</button>
+                <button class="log-btn" style="flex:1;" onclick="savePlatformSettings()">Save Rules</button>
                 <button class="btn-secondary" style="flex:1;" onclick="closeSettingsModal()">Cancel</button>
             </div>
         </div>
@@ -654,13 +447,8 @@
         let currentRR = 0;
         let activeGrade = "B";
 
-        // --- PLATFORM SETTINGS (WHITE LABEL ENGINE) ---
-        let platformSettings = JSON.parse(localStorage.getItem('ictPlatformSettings')) || {
-            title: "YANSHI'S JOURNAL",
-            handle: "@yanshi.snipes",
-            handleLink: "https://instagram.com/yanshi.snipes",
-            quoteText: "It's not a game of getting rich quick so remember the number of times you have lost your accounts chasing that",
-            quoteAuthor: "Yanshi Madhavani",
+        // --- PLATFORM SETTINGS (CHECKLIST ONLY) ---
+        let platformSettings = JSON.parse(localStorage.getItem('ictPlatformSettings_v5')) || {
             checklist: [
                 "Wait 15 min after market open",
                 "Stopped at one trade per day limit",
@@ -673,13 +461,6 @@
         };
 
         function applyPlatformBranding() {
-            document.getElementById('displayTitle').innerText = platformSettings.title;
-            document.getElementById('displayHandle').innerText = platformSettings.handle;
-            document.getElementById('displayHandle').href = platformSettings.handleLink;
-            document.getElementById('displayQuoteText').innerText = `"${platformSettings.quoteText}"`;
-            document.getElementById('displayQuoteAuthor').innerText = `- ${platformSettings.quoteAuthor}`;
-            
-            // Build logging checklist dynamically
             const clContainer = document.getElementById('dynamicChecklist');
             clContainer.innerHTML = '';
             platformSettings.checklist.forEach(rule => {
@@ -713,12 +494,6 @@
 
         // Settings Modal Logic
         function openSettingsModal() {
-            document.getElementById('sPlatformTitle').value = platformSettings.title;
-            document.getElementById('sHandle').value = platformSettings.handle;
-            document.getElementById('sHandleLink').value = platformSettings.handleLink;
-            document.getElementById('sQuoteText').value = platformSettings.quoteText;
-            document.getElementById('sQuoteAuthor').value = platformSettings.quoteAuthor;
-            
             renderSettingsChecklist();
             document.getElementById('settingsModal').style.display = 'flex';
         }
@@ -750,17 +525,10 @@
         }
 
         function savePlatformSettings() {
-            platformSettings.title = document.getElementById('sPlatformTitle').value || "TRADING JOURNAL";
-            platformSettings.handle = document.getElementById('sHandle').value || "@trader";
-            platformSettings.handleLink = document.getElementById('sHandleLink').value || "#";
-            platformSettings.quoteText = document.getElementById('sQuoteText').value || "Stay disciplined.";
-            platformSettings.quoteAuthor = document.getElementById('sQuoteAuthor').value || "Anonymous";
-            
-            // Gather rules
             const inputs = document.querySelectorAll('.rule-input');
             platformSettings.checklist = Array.from(inputs).map(inp => inp.value).filter(val => val.trim() !== "");
 
-            localStorage.setItem('ictPlatformSettings', JSON.stringify(platformSettings));
+            localStorage.setItem('ictPlatformSettings_v5', JSON.stringify(platformSettings));
             applyPlatformBranding();
             closeSettingsModal();
         }
@@ -813,14 +581,13 @@
         let accounts = JSON.parse(localStorage.getItem('ictAccounts_v3')) || [
             { id: 'default_1', name: 'Alpha Eval 1', firm: 'Alpha', type: 'Evaluation', startBal: 50000, targetBal: 53000, trailingLimit: 2000 }
         ];
-        
         let activeAccountId = localStorage.getItem('ictActiveAccount_v3') || accounts[0].id;
         
-        // Data Rescue: Pulls data safely from older versions if v4 is empty
-        let tradesData = JSON.parse(localStorage.getItem('ictJournal_v4'));
+        // Data Rescue Sequence
+        let tradesData = JSON.parse(localStorage.getItem('ictJournal_v5'));
         if (!tradesData || tradesData.length === 0) {
-            tradesData = JSON.parse(localStorage.getItem('ictJournal_v3')) || JSON.parse(localStorage.getItem('ictJournal_v2')) || [];
-            localStorage.setItem('ictJournal_v4', JSON.stringify(tradesData));
+            tradesData = JSON.parse(localStorage.getItem('ictJournal_v4')) || JSON.parse(localStorage.getItem('ictJournal_v3')) || JSON.parse(localStorage.getItem('ictJournal_v2')) || [];
+            localStorage.setItem('ictJournal_v5', JSON.stringify(tradesData));
         }
 
         let pnlChartInstance = null;
@@ -883,7 +650,7 @@
             if (accounts.length <= 1) { alert("You must have at least one account."); return; }
             if (confirm("Delete this account and all its trades?")) {
                 tradesData = tradesData.filter(t => t.accountId !== activeAccountId);
-                localStorage.setItem('ictJournal_v4', JSON.stringify(tradesData));
+                localStorage.setItem('ictJournal_v5', JSON.stringify(tradesData));
                 accounts = accounts.filter(a => a.id !== activeAccountId);
                 activeAccountId = accounts[0].id;
                 saveAccountsState();
@@ -892,13 +659,11 @@
             }
         }
 
-        // --- HELPER: GET WEEK NUMBER ---
         function getWeekNumber(d) {
             d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
             d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay()||7));
             var yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
-            var weekNo = Math.ceil(( ( (d - yearStart) / 86400000) + 1)/7);
-            return weekNo;
+            return Math.ceil(( ( (d - yearStart) / 86400000) + 1)/7);
         }
 
         function renderDashboard() {
@@ -911,8 +676,6 @@
             document.getElementById('formTitle').innerText = `Log Trade (${activeAcc.name})`;
 
             const filteredTrades = tradesData.filter(t => t.accountId === activeAccountId);
-            
-            // Sort trades chronologically to calculate true trailing drawdown correctly
             filteredTrades.sort((a, b) => new Date(a.Date + 'T' + a.Time) - new Date(b.Date + 'T' + b.Time));
 
             let totalPnl = 0, wins = 0;
@@ -922,15 +685,12 @@
             const tbody = document.getElementById('historyTableBody');
             tbody.innerHTML = '';
 
-            // Periodic Trackers
-            let weeklyPnl = 0;
-            let monthlyPnl = 0;
+            let weeklyPnl = 0, monthlyPnl = 0;
             const now = new Date();
             const currentWeek = getWeekNumber(now);
             const currentMonth = now.getMonth();
             const currentYear = now.getFullYear();
 
-            // Daily aggregator for calendar
             const dailyPnlMap = {};
 
             filteredTrades.forEach((trade, index) => {
@@ -940,41 +700,31 @@
                 chartData.push(totalPnl);
                 chartLabels.push("T" + (index + 1));
 
-                // --- TRUE TRAILING DRAWDOWN LOGIC ---
                 const runningBal = activeAcc.startBal + totalPnl;
                 if (runningBal > peakBal) peakBal = runningBal;
                 const currentTrailingThreshold = peakBal - (activeAcc.trailingLimit || 2000);
 
-                // Time analysis
                 const tDateObj = new Date(trade.Date);
-                if (tDateObj.getMonth() === currentMonth && tDateObj.getFullYear() === currentYear) {
-                    monthlyPnl += trade.PNL;
-                }
-                if (getWeekNumber(tDateObj) === currentWeek && tDateObj.getFullYear() === currentYear) {
-                    weeklyPnl += trade.PNL;
-                }
+                if (tDateObj.getMonth() === currentMonth && tDateObj.getFullYear() === currentYear) monthlyPnl += trade.PNL;
+                if (getWeekNumber(tDateObj) === currentWeek && tDateObj.getFullYear() === currentYear) weeklyPnl += trade.PNL;
 
-                // Calendar map
                 const dateStr = trade.Date; 
                 dailyPnlMap[dateStr] = (dailyPnlMap[dateStr] || 0) + trade.PNL;
 
                 const tradeGrade = trade.Grade || 'N/A';
                 const tradeLossReason = trade.LossReason || 'N/A (Win/BE)';
-                const chartLinkHTML = trade.ChartLink ? `<br><a href="${trade.ChartLink}" target="_blank" style="color:var(--accent-gold); font-size: 0.65rem; text-decoration:underline;">View Chart</a>` : '';
                 
                 const mistakeHtml = (trade.PNL < 0 && tradeLossReason !== 'N/A (Win/BE)') 
                     ? `<br><span style="color:var(--accent-red); font-size: 0.65rem;">Mistake: ${tradeLossReason}</span>` 
                     : '';
 
-                // Handle missing properties safely from v2/v3 data
                 const setupString = trade.Setups || `${trade.ChecklistScore || "?"} Rules Met`;
                 const killzoneStr = trade.Killzone || 'N/A';
 
-                // Render Table (Insert newest at top)
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${trade.Date} <br> <span style="font-size:0.65rem; color:var(--text-muted)">${killzoneStr}</span></td>
-                    <td><span style="color:var(--accent-gold); font-weight:700;">[${tradeGrade}]</span> ${setupString} ${mistakeHtml} ${chartLinkHTML}</td>
+                    <td><span style="color:var(--accent-gold); font-weight:700;">[${tradeGrade}]</span> ${setupString} ${mistakeHtml}</td>
                     <td>${trade.RR} R</td>
                     <td style="color:var(--text-muted)">Min: $${currentTrailingThreshold.toLocaleString()}</td>
                     <td class="${trade.PNL >= 0 ? 'text-green' : 'text-red'}">${trade.PNL >= 0 ? '+$' : '-$'}${Math.abs(trade.PNL)}</td>
@@ -983,7 +733,6 @@
                 tbody.insertBefore(tr, tbody.firstChild);
             });
 
-            // Update Basic Stats
             document.getElementById('totalTrades').innerText = filteredTrades.length;
             document.getElementById('winRate').innerText = filteredTrades.length ? ((wins / filteredTrades.length) * 100).toFixed(0) + "%" : "0%";
             
@@ -996,7 +745,6 @@
             balanceEl.innerText = "$" + currentBalance.toLocaleString();
             balanceEl.className = currentBalance < activeAcc.startBal ? "value red" : "value green";
 
-            // Update Periodic Analysis
             const wPnlEl = document.getElementById('weeklyPnl');
             wPnlEl.innerText = (weeklyPnl >= 0 ? "+$" : "-$") + Math.abs(weeklyPnl);
             wPnlEl.className = weeklyPnl >= 0 ? "val green" : "val red";
@@ -1005,7 +753,6 @@
             mPnlEl.innerText = (monthlyPnl >= 0 ? "+$" : "-$") + Math.abs(monthlyPnl);
             mPnlEl.className = monthlyPnl >= 0 ? "val green" : "val red";
 
-            // --- EVAL PROGRESS ---
             const neededProfit = activeAcc.targetBal - activeAcc.startBal;
             let evalProg = neededProfit > 0 ? (totalPnl / neededProfit) * 100 : 100;
             if(evalProg > 100) evalProg = 100; if(evalProg < 0) evalProg = 0;
@@ -1024,13 +771,11 @@
                 document.getElementById('progressBar').style.backgroundColor = "var(--accent-green)";
             }
 
-            // --- TRUE TRAILING DRAWDOWN VISUALS ---
             const trailingLimit = activeAcc.trailingLimit || 2000;
             const liquidationPoint = peakBal - trailingLimit;
             let bufferLeft = currentBalance - liquidationPoint;
             if (bufferLeft < 0) bufferLeft = 0;
             
-            // Progress bar shrinks as buffer disappears
             let ddProg = (bufferLeft / trailingLimit) * 100;
             if (ddProg > 100) ddProg = 100;
 
@@ -1046,7 +791,7 @@
 
             renderChart(chartLabels, chartData, totalPnl);
             renderCalendar(dailyPnlMap);
-            generateAIFeedback(filteredTrades, totalPnl);
+            generateAIFeedback(filteredTrades);
         }
 
         function renderCalendar(dailyPnlMap) {
@@ -1077,7 +822,6 @@
             for(let d=1; d<=daysInMonth; d++) {
                 const cell = document.createElement('div');
                 cell.className = 'cal-cell';
-                cell.innerText = d;
                 
                 const mStr = String(month + 1).padStart(2, '0');
                 const dStr = String(d).padStart(2, '0');
@@ -1087,6 +831,10 @@
                     const pnl = dailyPnlMap[dateKey];
                     if (pnl > 0) cell.classList.add('green');
                     else if (pnl < 0) cell.classList.add('red');
+                    // INJECT DOLLAR AMOUNT DIRECTLY INTO CALENDAR CELL
+                    cell.innerHTML = `${d}<br><span style="font-size:0.55rem; font-weight:800; margin-top:2px;">${pnl > 0 ? '+$' : '-$'}${Math.abs(pnl)}</span>`;
+                } else {
+                    cell.innerText = d;
                 }
                 grid.appendChild(cell);
             }
@@ -1126,7 +874,6 @@
 
             const activeAcc = accounts.find(a => a.id === activeAccountId);
             
-            // Generate Setup String from dynamic checklist
             const checksTotal = document.querySelectorAll('.preflight-check').length;
             const checksDone = document.querySelectorAll('.preflight-check:checked').length;
             const setupString = checksTotal > 0 ? `${checksDone}/${checksTotal} Rules Met` : "Executed";
@@ -1144,7 +891,6 @@
                 ChecklistScore: `${checksDone}/${checksTotal}`,
                 Grade: activeGrade,
                 LossReason: document.getElementById('tLossReason').value,
-                ChartLink: document.getElementById('tChartLink').value,
                 Entry: entryInput.value, StopLoss: stopInput.value, Exit: exitInput.value,
                 RR: currentRR,
                 PNL: pnlValue,
@@ -1152,15 +898,12 @@
             };
 
             tradesData.push(newTrade);
-            localStorage.setItem('ictJournal_v4', JSON.stringify(tradesData));
+            localStorage.setItem('ictJournal_v5', JSON.stringify(tradesData));
             
-            // Clear inputs
             document.getElementById('pnl').value = ""; document.getElementById('tImprovement').value = "";
             document.getElementById('tPartials').value = ""; entryInput.value = ""; stopInput.value = ""; 
-            exitInput.value = ""; rrOutput.value = ""; document.getElementById('tChartLink').value = "";
-            document.getElementById('tLossReason').selectedIndex = 0;
+            exitInput.value = ""; rrOutput.value = ""; document.getElementById('tLossReason').selectedIndex = 0;
             
-            // Clear checklist
             document.querySelectorAll('.preflight-check').forEach(cb => cb.checked = false);
             calculateGrade();
             
@@ -1171,7 +914,7 @@
             const filteredTrades = tradesData.filter(t => t.accountId === activeAccountId);
             if (filteredTrades.length === 0) { alert("No trades logged yet."); return; }
             
-            const t = filteredTrades[filteredTrades.length - 1]; // latest trade
+            const t = filteredTrades[filteredTrades.length - 1]; 
             const pnlStr = t.PNL >= 0 ? `+$${t.PNL}` : `-$${Math.abs(t.PNL)}`;
             
             const snipeText = `🎯 Snipe Executed\nAccount: ${accounts.find(a => a.id === activeAccountId).name}\nSession: ${t.Killzone}\nSetup: [${t.Grade}] ${t.Setups}\nRealized RR: ${t.RR}R\nPNL: ${pnlStr}`;
@@ -1183,7 +926,7 @@
 
         function deleteTrade(id) {
             tradesData = tradesData.filter(trade => trade.id !== id);
-            localStorage.setItem('ictJournal_v4', JSON.stringify(tradesData));
+            localStorage.setItem('ictJournal_v5', JSON.stringify(tradesData));
             renderDashboard();
         }
 
@@ -1192,22 +935,63 @@
             const ws = XLSX.utils.json_to_sheet(tradesData);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Logs");
-            XLSX.writeFile(wb, "Trading_Logs.xlsx");
+            XLSX.writeFile(wb, "Yanshi_Trading_Logs.xlsx");
         }
 
-        function generateAIFeedback(filteredTrades, totalPnl) {
-            if(filteredTrades.length < 3) return;
-            let mistakes = 0;
+        // DEEP ALGORITHMIC AI COACH
+        function generateAIFeedback(filteredTrades) {
+            if(filteredTrades.length < 3) {
+                document.getElementById('aiOutput').innerHTML = "Log at least 3 trades for algorithmic execution insights.";
+                return;
+            }
+
+            let aGradeWins = 0, aGradeTotal = 0;
+            let fomoLosses = 0;
+            let totalPnl = 0;
+            let sessionPnl = { "London Open": 0, "NY AM Session": 0, "NY PM Session": 0, "Macro": 0 };
+
             filteredTrades.forEach(t => { 
-                if((t.EmotionBefore && t.EmotionBefore.includes("FOMO")) || (t.LossReason && t.LossReason.includes("FOMO"))) mistakes++; 
+                totalPnl += t.PNL;
+                
+                if(t.Grade === "A+" || t.Grade === "A") {
+                    aGradeTotal++;
+                    if(t.PNL > 0) aGradeWins++;
+                }
+
+                if((t.EmotionBefore && t.EmotionBefore.includes("FOMO")) || (t.LossReason && t.LossReason.includes("FOMO"))) {
+                    if(t.PNL < 0) fomoLosses++; 
+                }
+
+                if(t.Killzone && sessionPnl[t.Killzone] !== undefined) {
+                    sessionPnl[t.Killzone] += t.PNL;
+                }
             });
-            let f = "Focus on preserving your trailing buffer.";
-            if(mistakes >= 2) f = `Impatience / FOMO detected on ${mistakes} trades. Ensure Pre-Flight checklist is A+ before striking.`;
-            else if(totalPnl > 0) f = "Strong execution. Risk control is solid, keep pressing your edge.";
-            document.getElementById('aiOutput').innerText = f;
+
+            let feedbackStr = `<strong>AI Execution Insights:</strong><br>`;
+
+            if (aGradeTotal > 0) {
+                let aWinRate = ((aGradeWins / aGradeTotal) * 100).toFixed(0);
+                feedbackStr += `• Your A/A+ setups hold a ${aWinRate}% win rate. `;
+                if (aWinRate < 40) feedbackStr += `You need to review your HTF alignment rules, they aren't translating to wins.<br>`;
+                else feedbackStr += `Trust your pre-flight checklist, the math proves it works.<br>`;
+            }
+
+            if (fomoLosses > 0) {
+                feedbackStr += `• <span style="color:var(--accent-red)">Warning:</span> FOMO has directly caused ${fomoLosses} losses on this account.<br>`;
+            }
+
+            // Find best and worst sessions
+            let bestSession = Object.keys(sessionPnl).reduce((a, b) => sessionPnl[a] > sessionPnl[b] ? a : b);
+            let worstSession = Object.keys(sessionPnl).reduce((a, b) => sessionPnl[a] < sessionPnl[b] ? a : b);
+
+            if (sessionPnl[bestSession] > 0 && sessionPnl[worstSession] < 0) {
+                feedbackStr += `• The ${bestSession} is your most profitable window (+$${sessionPnl[bestSession]}). Consider avoiding the ${worstSession} (-$${Math.abs(sessionPnl[worstSession])}).`;
+            }
+
+            document.getElementById('aiOutput').innerHTML = feedbackStr;
         }
 
-        // Initialize App
+        // Init App
         applyPlatformBranding();
         renderDashboard();
     </script>
