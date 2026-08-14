@@ -59,9 +59,7 @@
             transition: opacity 0.2s;
         }
         
-        .header h4 a:hover {
-            opacity: 0.8;
-        }
+        .header h4 a:hover { opacity: 0.8; }
 
         .header h1 { 
             font-size: 1.8rem; 
@@ -109,7 +107,7 @@
 
         .dashboard {
             display: grid;
-            grid-template-columns: 420px 1fr;
+            grid-template-columns: 440px 1fr;
             gap: 25px;
         }
 
@@ -153,10 +151,10 @@
         }
 
         input:focus, select:focus, textarea:focus { border-color: var(--accent-gold); }
-        input[readonly] { color: var(--accent-gold); font-weight: bold; background-color: rgba(234, 179, 8, 0.05); }
+        input[readonly] { color: var(--accent-gold); font-weight: bold; background-color: rgba(234, 179, 8, 0.05); cursor: default; }
         input[type="date"]::-webkit-calendar-picker-indicator,
         input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); }
-        textarea { resize: vertical; min-height: 48px; }
+        textarea { resize: vertical; min-height: 40px; }
 
         .checkboxes {
             display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px;
@@ -164,6 +162,33 @@
             border-radius: 6px; border: 1px solid var(--border-color);
         }
         .checkboxes label { display: flex; align-items: center; gap: 5px; font-size: 0.8rem; cursor: pointer; font-weight: 500;}
+
+        /* Pre-Flight Checklist Styling */
+        .checklist-container {
+            background-color: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .checklist-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 6px;
+            margin-bottom: 4px;
+        }
+        .checklist-header h4 { font-size: 0.75rem; color: var(--text-main); }
+        .auto-grade { font-size: 0.9rem; font-weight: 800; color: var(--accent-gold); }
+        .checklist-container label {
+            display: flex; align-items: center; gap: 8px; font-size: 0.75rem;
+            cursor: pointer; color: var(--text-muted); transition: color 0.2s;
+        }
+        .checklist-container label:hover { color: var(--text-main); }
 
         .log-btn {
             background-color: var(--accent-gold); color: #000; border: none;
@@ -179,25 +204,18 @@
             border-top: 1px solid var(--border-color);
             padding-top: 15px;
         }
-        .motivation { 
-            font-size: 0.8rem; 
-            color: var(--accent-gold); 
-            letter-spacing: 3px; 
-            font-weight: 700; 
-            opacity: 0.8; 
-            text-transform: uppercase; 
+        .custom-quote { 
+            font-size: 0.75rem; 
+            color: var(--text-muted); 
+            font-style: italic;
+            line-height: 1.4;
         }
-        .ig-link {
-            display: inline-block;
+        .quote-author {
+            display: block;
             margin-top: 6px;
             font-size: 0.7rem;
-            color: var(--text-muted);
-            text-decoration: none;
-            letter-spacing: 1px;
-            transition: color 0.2s;
-        }
-        .ig-link:hover {
             color: var(--accent-gold);
+            font-weight: 700;
         }
 
         /* Right Panel */
@@ -279,12 +297,13 @@
 
     <div class="header">
         <div>
-            <h4><a href="https://instagram.com/yanshi.snipes" target="_blank">@yanshi.snipes</a> | NY AM Session</h4>
+            <h4><a href="https://instagram.com/yanshi.snipes" target="_blank">@yanshi.snipes</a></h4>
             <h1>YANSHI'S JOURNAL</h1>
         </div>
         <div class="header-actions">
             <select id="accountSelect" class="account-switcher" onchange="switchAccount()"></select>
             <button class="btn-secondary" onclick="openAddAccountModal()">+ New Account</button>
+            <button class="btn-secondary" onclick="copyLatestSnipe()">Copy Latest Snipe</button>
             <button class="export-btn" onclick="exportToExcel()">Export to Excel</button>
         </div>
     </div>
@@ -304,10 +323,12 @@
                     <input type="time" id="tTime">
                 </div>
                 <div class="form-group">
-                    <label>Time Frame</label>
-                    <select id="tTf">
-                        <option>1m</option><option>5m</option><option>15m</option>
-                        <option>1H</option><option>4H</option><option>Daily</option>
+                    <label>Killzone</label>
+                    <select id="tKillzone">
+                        <option>London Open</option>
+                        <option>NY AM Session</option>
+                        <option>NY PM Session</option>
+                        <option>Macro</option>
                     </select>
                 </div>
             </div>
@@ -344,28 +365,7 @@
                 <label><input type="checkbox" value="Sweep"> Sweep</label>
                 <label><input type="checkbox" value="iFVG"> iFVG</label>
                 <label><input type="checkbox" value="PD Array"> PD Array</label>
-                <label><input type="checkbox" value="BOS"> BOS</label>
-            </div>
-
-            <!-- NEW: SETUP GRADE AND REASON FOR LOSS -->
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Setup Grade</label>
-                    <select id="tGrade">
-                        <option>A+ Setup</option>
-                        <option>B+ Setup</option>
-                        <option>C+ Setup</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Reason for Loss (If loss)</label>
-                    <select id="tLossReason">
-                        <option>N/A (Win/BE)</option>
-                        <option>FOMO / Impatient</option>
-                        <option>No PD Array</option>
-                        <option>Greed / Didn't secure partials</option>
-                    </select>
-                </div>
+                <label><input type="checkbox" value="MSS"> MSS</label>
             </div>
 
             <div class="form-row">
@@ -393,24 +393,59 @@
                     <input type="number" id="pnl" placeholder="e.g. 400 or -150">
                 </div>
                 <div class="form-group">
-                    <label>Realized RR (Auto)</label>
+                    <label>Realized RR</label>
                     <input type="text" id="rr" readonly placeholder="0.0 R">
                 </div>
             </div>
 
-            <div class="form-row" style="margin-bottom:0;">
+            <!-- PRE-FLIGHT CHECKLIST (AUTO GRADE) -->
+            <div class="checklist-container">
+                <div class="checklist-header">
+                    <h4>Pre-Flight Alignment</h4>
+                    <span class="auto-grade" id="autoGradeDisplay">[B]</span>
+                </div>
+                <label><input type="checkbox" class="preflight-check" onchange="calculateGrade()"> Wait 15 min after market open</label>
+                <label><input type="checkbox" class="preflight-check" onchange="calculateGrade()"> Stopped at one trade per day limit</label>
+                <label><input type="checkbox" class="preflight-check" onchange="calculateGrade()"> HTF PD Array alignment confirmed</label>
+                <label><input type="checkbox" class="preflight-check" onchange="calculateGrade()"> iFVG present on execution timeframe</label>
+                <label><input type="checkbox" class="preflight-check" onchange="calculateGrade()"> Strong Draw on Liquidity (DOL)</label>
+                <label><input type="checkbox" class="preflight-check" onchange="calculateGrade()"> Stop loss safely below swing low/high</label>
+                <label><input type="checkbox" class="preflight-check" onchange="calculateGrade()"> Minimum 1:1.3 RR structure</label>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Reason for Loss (If loss)</label>
+                    <select id="tLossReason">
+                        <option>N/A (Win/BE)</option>
+                        <option>FOMO / Impatient</option>
+                        <option>No PD Array</option>
+                        <option>Weak Setup / Forced</option>
+                        <option>Greed / Didn't secure partials</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-row">
                 <div class="form-group">
                     <label>What Could Have Been Done Better?</label>
                     <textarea id="tImprovement" placeholder="Did you follow your ICT rules?"></textarea>
                 </div>
             </div>
+            
+            <div class="form-row" style="margin-bottom:0;">
+                <div class="form-group">
+                    <label>Chart URL (Optional Archive)</label>
+                    <input type="url" id="tChartLink" placeholder="https://www.tradingview.com/x/...">
+                </div>
+            </div>
 
             <button class="log-btn" onclick="logTrade()">Log Trade</button>
 
-            <!-- BRANDING FOOTER -->
+            <!-- CUSTOM GROUNDING FOOTER -->
             <div class="brand-footer">
-                <div class="motivation">You are the 1%</div>
-                <a href="https://instagram.com/yanshi.snipes" target="_blank" class="ig-link">instagram.com/yanshi.snipes</a>
+                <div class="custom-quote">"It's not a game of getting rich quick so remember the number of times you have lost your accounts chasing that"</div>
+                <span class="quote-author">- Yanshi Madhavani</span>
             </div>
         </div>
 
@@ -570,7 +605,20 @@
         const entryInput = document.getElementById('entry'), stopInput = document.getElementById('stop'), exitInput = document.getElementById('exit'), rrOutput = document.getElementById('rr');
         const contractsInput = document.getElementById('tContracts'), partialsInput = document.getElementById('tPartials');
         let currentRR = 0;
+        let activeGrade = "B";
 
+        // Pre-Flight Grading Engine
+        function calculateGrade() {
+            const checks = document.querySelectorAll('.preflight-check:checked').length;
+            const display = document.getElementById('autoGradeDisplay');
+            if(checks === 7) activeGrade = "A+";
+            else if(checks === 6) activeGrade = "A";
+            else if(checks === 5) activeGrade = "B+";
+            else activeGrade = "B";
+            display.innerText = `[${activeGrade}]`;
+        }
+
+        // Realized RR Calculation Engine
         function calcRR() {
             const ent = parseFloat(entryInput.value), stp = parseFloat(stopInput.value), ext = parseFloat(exitInput.value), contracts = parseFloat(contractsInput.value);
             const partialsStr = partialsInput.value;
@@ -615,17 +663,17 @@
         partialsInput.addEventListener('input', calcRR);
 
         // --- STATE STORAGE ---
-        let accounts = JSON.parse(localStorage.getItem('ictAccounts_v2')) || [
+        let accounts = JSON.parse(localStorage.getItem('ictAccounts_v3')) || [
             { id: 'default_1', name: 'Alpha Eval 1', firm: 'Alpha', type: 'Evaluation', startBal: 50000, targetBal: 53000, trailingLimit: 2000 }
         ];
         
-        let activeAccountId = localStorage.getItem('ictActiveAccount_v2') || accounts[0].id;
-        let tradesData = JSON.parse(localStorage.getItem('ictJournal_v2')) || [];
+        let activeAccountId = localStorage.getItem('ictActiveAccount_v3') || accounts[0].id;
+        let tradesData = JSON.parse(localStorage.getItem('ictJournal_v3')) || [];
         let pnlChartInstance = null;
 
         function saveAccountsState() {
-            localStorage.setItem('ictAccounts_v2', JSON.stringify(accounts));
-            localStorage.setItem('ictActiveAccount_v2', activeAccountId);
+            localStorage.setItem('ictAccounts_v3', JSON.stringify(accounts));
+            localStorage.setItem('ictActiveAccount_v3', activeAccountId);
         }
 
         function populateAccountDropdown() {
@@ -681,7 +729,7 @@
             if (accounts.length <= 1) { alert("You must have at least one account."); return; }
             if (confirm("Delete this account and all its trades?")) {
                 tradesData = tradesData.filter(t => t.accountId !== activeAccountId);
-                localStorage.setItem('ictJournal_v2', JSON.stringify(tradesData));
+                localStorage.setItem('ictJournal_v3', JSON.stringify(tradesData));
                 accounts = accounts.filter(a => a.id !== activeAccountId);
                 activeAccountId = accounts[0].id;
                 saveAccountsState();
@@ -756,11 +804,10 @@
                 const dateStr = trade.Date; 
                 dailyPnlMap[dateStr] = (dailyPnlMap[dateStr] || 0) + trade.PNL;
 
-                // Safely grab new properties for backwards compatibility
                 const tradeGrade = trade.Grade || 'N/A';
                 const tradeLossReason = trade.LossReason || 'N/A (Win/BE)';
+                const chartLinkHTML = trade.ChartLink ? `<br><a href="${trade.ChartLink}" target="_blank" style="color:var(--accent-gold); font-size: 0.65rem; text-decoration:underline;">View Chart</a>` : '';
                 
-                // Show red loss reason directly under the setup in history table if applicable
                 const mistakeHtml = (trade.PNL < 0 && tradeLossReason !== 'N/A (Win/BE)') 
                     ? `<br><span style="color:var(--accent-red); font-size: 0.65rem;">Mistake: ${tradeLossReason}</span>` 
                     : '';
@@ -768,8 +815,8 @@
                 // Render Table (Insert newest at top)
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td>${trade.Date} ${trade.Time}</td>
-                    <td><span style="color:var(--accent-gold); font-weight:700;">[${tradeGrade}]</span> ${trade.Setups} ${mistakeHtml}</td>
+                    <td>${trade.Date} <br> <span style="font-size:0.65rem; color:var(--text-muted)">${trade.Killzone}</span></td>
+                    <td><span style="color:var(--accent-gold); font-weight:700;">[${tradeGrade}]</span> ${trade.Setups} ${mistakeHtml} ${chartLinkHTML}</td>
                     <td>${trade.RR} R</td>
                     <td style="color:var(--text-muted)">Min: $${currentTrailingThreshold.toLocaleString()}</td>
                     <td class="${trade.PNL >= 0 ? 'text-green' : 'text-red'}">${trade.PNL >= 0 ? '+$' : '-$'}${Math.abs(trade.PNL)}</td>
@@ -864,7 +911,6 @@
             const firstDay = new Date(year, month, 1).getDay();
             const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-            // Blank spaces before month start
             for(let i=0; i<firstDay; i++) {
                 const empty = document.createElement('div');
                 grid.appendChild(empty);
@@ -875,7 +921,6 @@
                 cell.className = 'cal-cell';
                 cell.innerText = d;
                 
-                // Format date to match JSON standard YYYY-MM-DD
                 const mStr = String(month + 1).padStart(2, '0');
                 const dStr = String(d).padStart(2, '0');
                 const dateKey = `${year}-${mStr}-${dStr}`;
@@ -930,12 +975,14 @@
                 accountId: activeAccountId,
                 Date: document.getElementById('tDate').value,
                 Time: document.getElementById('tTime').value || "--:--",
+                Killzone: document.getElementById('tKillzone').value,
                 Contracts: document.getElementById('tContracts').value || "1",
                 NewsImpact: document.getElementById('tNewsImpact').value,
                 EmotionBefore: document.getElementById('tEmotionBefore').value,
                 Setups: tags,
-                Grade: document.getElementById('tGrade').value,
+                Grade: activeGrade,
                 LossReason: document.getElementById('tLossReason').value,
+                ChartLink: document.getElementById('tChartLink').value,
                 Entry: entryInput.value, StopLoss: stopInput.value, Exit: exitInput.value,
                 RR: currentRR,
                 PNL: pnlValue,
@@ -943,18 +990,39 @@
             };
 
             tradesData.push(newTrade);
-            localStorage.setItem('ictJournal_v2', JSON.stringify(tradesData));
+            localStorage.setItem('ictJournal_v3', JSON.stringify(tradesData));
             
+            // Clear inputs
             document.getElementById('pnl').value = ""; document.getElementById('tImprovement').value = "";
-            document.getElementById('tPartials').value = ""; entryInput.value = ""; stopInput.value = ""; exitInput.value = ""; rrOutput.value = "";
-            document.getElementById('tGrade').selectedIndex = 0; document.getElementById('tLossReason').selectedIndex = 0;
+            document.getElementById('tPartials').value = ""; entryInput.value = ""; stopInput.value = ""; 
+            exitInput.value = ""; rrOutput.value = ""; document.getElementById('tChartLink').value = "";
+            document.getElementById('tLossReason').selectedIndex = 0;
+            
+            // Clear checklist
+            document.querySelectorAll('.preflight-check').forEach(cb => cb.checked = false);
+            calculateGrade();
             cbs.forEach(cb => cb.checked = false);
+            
             renderDashboard();
+        }
+
+        function copyLatestSnipe() {
+            const filteredTrades = tradesData.filter(t => t.accountId === activeAccountId);
+            if (filteredTrades.length === 0) { alert("No trades logged yet."); return; }
+            
+            const t = filteredTrades[filteredTrades.length - 1]; // latest trade
+            const pnlStr = t.PNL >= 0 ? `+$${t.PNL}` : `-$${Math.abs(t.PNL)}`;
+            
+            const snipeText = `🎯 Snipe Executed\nAccount: ${accounts.find(a => a.id === activeAccountId).name}\nSession: ${t.Killzone}\nSetup: [${t.Grade}] ${t.Setups}\nRealized RR: ${t.RR}R\nPNL: ${pnlStr}`;
+            
+            navigator.clipboard.writeText(snipeText).then(() => {
+                alert("Snipe details copied to clipboard!");
+            });
         }
 
         function deleteTrade(id) {
             tradesData = tradesData.filter(trade => trade.id !== id);
-            localStorage.setItem('ictJournal_v2', JSON.stringify(tradesData));
+            localStorage.setItem('ictJournal_v3', JSON.stringify(tradesData));
             renderDashboard();
         }
 
@@ -973,11 +1041,13 @@
                 if((t.EmotionBefore && t.EmotionBefore.includes("FOMO")) || (t.LossReason && t.LossReason.includes("FOMO"))) mistakes++; 
             });
             let f = "Focus on preserving your trailing buffer.";
-            if(mistakes >= 2) f = `Impatience / FOMO detected on ${mistakes} trades. Wait for premium/discount arrays before striking.`;
+            if(mistakes >= 2) f = `Impatience / FOMO detected on ${mistakes} trades. Ensure Pre-Flight checklist is A+ before striking.`;
             else if(totalPnl > 0) f = "Strong execution. Risk control is solid, keep pressing your edge.";
             document.getElementById('aiOutput').innerText = f;
         }
 
+        // Init App
+        calculateGrade();
         renderDashboard();
     </script>
 </body>
