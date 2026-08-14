@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Yanshi Snipes | Trading Journal</title>
+    <title>Trading Journal Platform</title>
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- SheetJS for Excel Export -->
@@ -156,13 +156,6 @@
         input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); }
         textarea { resize: vertical; min-height: 40px; }
 
-        .checkboxes {
-            display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px;
-            margin: 4px 0 10px 0; background-color: var(--bg-input); padding: 10px 12px;
-            border-radius: 6px; border: 1px solid var(--border-color);
-        }
-        .checkboxes label { display: flex; align-items: center; gap: 5px; font-size: 0.8rem; cursor: pointer; font-weight: 500;}
-
         /* Pre-Flight Checklist Styling */
         .checklist-container {
             background-color: var(--bg-input);
@@ -172,7 +165,7 @@
             margin-bottom: 10px;
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 10px;
         }
         .checklist-header {
             display: flex;
@@ -185,10 +178,22 @@
         .checklist-header h4 { font-size: 0.75rem; color: var(--text-main); }
         .auto-grade { font-size: 0.9rem; font-weight: 800; color: var(--accent-gold); }
         .checklist-container label {
-            display: flex; align-items: center; gap: 8px; font-size: 0.75rem;
-            cursor: pointer; color: var(--text-muted); transition: color 0.2s;
+            display: flex; 
+            align-items: flex-start; /* Perfect multi-line alignment */
+            gap: 8px; 
+            font-size: 0.75rem;
+            cursor: pointer; 
+            color: var(--text-muted); 
+            transition: color 0.2s;
+            line-height: 1.4;
         }
         .checklist-container label:hover { color: var(--text-main); }
+        .checklist-container input[type="checkbox"] {
+            margin-top: 2px;
+            flex-shrink: 0; /* Prevents checkbox from squishing */
+            width: 14px;
+            height: 14px;
+        }
 
         .log-btn {
             background-color: var(--accent-gold); color: #000; border: none;
@@ -288,23 +293,31 @@
         }
         .modal {
             background-color: var(--bg-panel); border: 1px solid var(--border-color);
-            padding: 25px; border-radius: 12px; width: 420px; display: flex; flex-direction: column; gap: 15px;
+            padding: 25px; border-radius: 12px; width: 450px; display: flex; flex-direction: column; gap: 15px;
+            max-height: 90vh; overflow-y: auto;
         }
         .modal h3 { border-bottom: 1px solid var(--border-color); padding-bottom: 10px; color: var(--text-main); }
+        
+        /* Master Settings Lists */
+        .settings-rule-list { display: flex; flex-direction: column; gap: 8px; margin-top: 5px; }
+        .settings-rule-item { display: flex; gap: 8px; }
+        .settings-rule-item input { flex: 1; }
+        .remove-rule-btn { background-color: var(--accent-red); color: white; border: none; border-radius: 4px; padding: 0 10px; cursor: pointer; font-weight:bold; }
     </style>
 </head>
 <body>
 
     <div class="header">
         <div>
-            <h4><a href="https://instagram.com/yanshi.snipes" target="_blank">@yanshi.snipes</a></h4>
-            <h1>YANSHI'S JOURNAL</h1>
+            <h4><a href="#" target="_blank" id="displayHandle">@yanshi.snipes</a></h4>
+            <h1 id="displayTitle">YANSHI'S JOURNAL</h1>
         </div>
         <div class="header-actions">
             <select id="accountSelect" class="account-switcher" onchange="switchAccount()"></select>
             <button class="btn-secondary" onclick="openAddAccountModal()">+ New Account</button>
             <button class="btn-secondary" onclick="copyLatestSnipe()">Copy Latest Snipe</button>
-            <button class="export-btn" onclick="exportToExcel()">Export to Excel</button>
+            <button class="export-btn" onclick="exportToExcel()">Export</button>
+            <button class="btn-secondary" onclick="openSettingsModal()">⚙️ Settings</button>
         </div>
     </div>
 
@@ -361,13 +374,6 @@
                 </div>
             </div>
 
-            <div class="checkboxes" id="setupCheckboxes">
-                <label><input type="checkbox" value="Sweep"> Sweep</label>
-                <label><input type="checkbox" value="iFVG"> iFVG</label>
-                <label><input type="checkbox" value="PD Array"> PD Array</label>
-                <label><input type="checkbox" value="MSS"> MSS</label>
-            </div>
-
             <div class="form-row">
                 <div class="form-group">
                     <label>Entry Price</label>
@@ -398,19 +404,15 @@
                 </div>
             </div>
 
-            <!-- PRE-FLIGHT CHECKLIST (AUTO GRADE) -->
+            <!-- DYNAMIC PRE-FLIGHT CHECKLIST (AUTO GRADE) -->
             <div class="checklist-container">
                 <div class="checklist-header">
                     <h4>Pre-Flight Alignment</h4>
                     <span class="auto-grade" id="autoGradeDisplay">[B]</span>
                 </div>
-                <label><input type="checkbox" class="preflight-check" onchange="calculateGrade()"> Wait 15 min after market open</label>
-                <label><input type="checkbox" class="preflight-check" onchange="calculateGrade()"> Stopped at one trade per day limit</label>
-                <label><input type="checkbox" class="preflight-check" onchange="calculateGrade()"> HTF PD Array alignment confirmed</label>
-                <label><input type="checkbox" class="preflight-check" onchange="calculateGrade()"> iFVG present on execution timeframe</label>
-                <label><input type="checkbox" class="preflight-check" onchange="calculateGrade()"> Strong Draw on Liquidity (DOL)</label>
-                <label><input type="checkbox" class="preflight-check" onchange="calculateGrade()"> Stop loss safely below swing low/high</label>
-                <label><input type="checkbox" class="preflight-check" onchange="calculateGrade()"> Minimum 1:1.3 RR structure</label>
+                <div id="dynamicChecklist">
+                    <!-- Populated by JS based on user settings -->
+                </div>
             </div>
 
             <div class="form-row">
@@ -429,7 +431,7 @@
             <div class="form-row">
                 <div class="form-group">
                     <label>What Could Have Been Done Better?</label>
-                    <textarea id="tImprovement" placeholder="Did you follow your ICT rules?"></textarea>
+                    <textarea id="tImprovement" placeholder="Review your execution"></textarea>
                 </div>
             </div>
             
@@ -444,8 +446,8 @@
 
             <!-- CUSTOM GROUNDING FOOTER -->
             <div class="brand-footer">
-                <div class="custom-quote">"It's not a game of getting rich quick so remember the number of times you have lost your accounts chasing that"</div>
-                <span class="quote-author">- Yanshi Madhavani</span>
+                <div class="custom-quote" id="displayQuoteText">"It's not a game of getting rich quick so remember the number of times you have lost your accounts chasing that"</div>
+                <span class="quote-author" id="displayQuoteAuthor">- Yanshi Madhavani</span>
             </div>
         </div>
 
@@ -544,7 +546,7 @@
                     <thead>
                         <tr>
                             <th>Date / Time</th>
-                            <th>Setup</th>
+                            <th>Setup Execution</th>
                             <th>RR</th>
                             <th>Trailing Threshold</th>
                             <th>PNL</th>
@@ -600,6 +602,51 @@
         </div>
     </div>
 
+    <!-- WHITE-LABEL PLATFORM SETTINGS MODAL -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal">
+            <h3>Platform Settings</h3>
+            
+            <div class="form-group">
+                <label>Platform Title</label>
+                <input type="text" id="sPlatformTitle">
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Social Handle Display</label>
+                    <input type="text" id="sHandle">
+                </div>
+                <div class="form-group">
+                    <label>Social Link URL</label>
+                    <input type="text" id="sHandleLink">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Footer Quote (Grounding Psychology)</label>
+                <textarea id="sQuoteText" rows="3"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Quote Author</label>
+                <input type="text" id="sQuoteAuthor">
+            </div>
+
+            <hr style="border:none; border-top:1px solid var(--border-color); margin: 5px 0;">
+            
+            <div class="form-group">
+                <label>Custom Pre-Flight Checklist</label>
+                <div class="settings-rule-list" id="settingsChecklist">
+                    <!-- Rules populated by JS -->
+                </div>
+                <button class="btn-secondary" style="margin-top:8px; padding:6px; font-size:0.75rem;" onclick="addRuleToSettings()">+ Add Rule</button>
+            </div>
+
+            <div style="display:flex; gap:10px; margin-top:10px;">
+                <button class="log-btn" style="flex:1;" onclick="savePlatformSettings()">Save Master Settings</button>
+                <button class="btn-secondary" style="flex:1;" onclick="closeSettingsModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         document.getElementById('tDate').valueAsDate = new Date();
         const entryInput = document.getElementById('entry'), stopInput = document.getElementById('stop'), exitInput = document.getElementById('exit'), rrOutput = document.getElementById('rr');
@@ -607,15 +654,115 @@
         let currentRR = 0;
         let activeGrade = "B";
 
-        // Pre-Flight Grading Engine
+        // --- PLATFORM SETTINGS (WHITE LABEL ENGINE) ---
+        let platformSettings = JSON.parse(localStorage.getItem('ictPlatformSettings')) || {
+            title: "YANSHI'S JOURNAL",
+            handle: "@yanshi.snipes",
+            handleLink: "https://instagram.com/yanshi.snipes",
+            quoteText: "It's not a game of getting rich quick so remember the number of times you have lost your accounts chasing that",
+            quoteAuthor: "Yanshi Madhavani",
+            checklist: [
+                "Wait 15 min after market open",
+                "Stopped at one trade per day limit",
+                "HTF PD Array alignment confirmed",
+                "iFVG present on execution timeframe",
+                "Strong Draw on Liquidity (DOL)",
+                "Stop loss safely below swing low/high",
+                "Minimum 1:1.3 RR structure"
+            ]
+        };
+
+        function applyPlatformBranding() {
+            document.getElementById('displayTitle').innerText = platformSettings.title;
+            document.getElementById('displayHandle').innerText = platformSettings.handle;
+            document.getElementById('displayHandle').href = platformSettings.handleLink;
+            document.getElementById('displayQuoteText').innerText = `"${platformSettings.quoteText}"`;
+            document.getElementById('displayQuoteAuthor').innerText = `- ${platformSettings.quoteAuthor}`;
+            
+            // Build logging checklist dynamically
+            const clContainer = document.getElementById('dynamicChecklist');
+            clContainer.innerHTML = '';
+            platformSettings.checklist.forEach(rule => {
+                const lbl = document.createElement('label');
+                lbl.innerHTML = `<input type="checkbox" class="preflight-check" onchange="calculateGrade()"> <span>${rule}</span>`;
+                clContainer.appendChild(lbl);
+            });
+            calculateGrade();
+        }
+
+        // Pre-Flight Grading Engine (Dynamic Percentage)
         function calculateGrade() {
-            const checks = document.querySelectorAll('.preflight-check:checked').length;
+            const total = document.querySelectorAll('.preflight-check').length;
+            const checked = document.querySelectorAll('.preflight-check:checked').length;
             const display = document.getElementById('autoGradeDisplay');
-            if(checks === 7) activeGrade = "A+";
-            else if(checks === 6) activeGrade = "A";
-            else if(checks === 5) activeGrade = "B+";
+            
+            if (total === 0) {
+                activeGrade = "N/A";
+                display.innerText = "";
+                return;
+            }
+
+            const percentage = checked / total;
+            if (percentage === 1) activeGrade = "A+";
+            else if (percentage >= 0.8) activeGrade = "A";
+            else if (percentage >= 0.6) activeGrade = "B+";
             else activeGrade = "B";
+            
             display.innerText = `[${activeGrade}]`;
+        }
+
+        // Settings Modal Logic
+        function openSettingsModal() {
+            document.getElementById('sPlatformTitle').value = platformSettings.title;
+            document.getElementById('sHandle').value = platformSettings.handle;
+            document.getElementById('sHandleLink').value = platformSettings.handleLink;
+            document.getElementById('sQuoteText').value = platformSettings.quoteText;
+            document.getElementById('sQuoteAuthor').value = platformSettings.quoteAuthor;
+            
+            renderSettingsChecklist();
+            document.getElementById('settingsModal').style.display = 'flex';
+        }
+
+        function closeSettingsModal() { document.getElementById('settingsModal').style.display = 'none'; }
+
+        function renderSettingsChecklist() {
+            const container = document.getElementById('settingsChecklist');
+            container.innerHTML = '';
+            platformSettings.checklist.forEach((rule, index) => {
+                const div = document.createElement('div');
+                div.className = 'settings-rule-item';
+                div.innerHTML = `
+                    <input type="text" class="rule-input" value="${rule}">
+                    <button class="remove-rule-btn" onclick="removeRule(${index})">X</button>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function addRuleToSettings() {
+            platformSettings.checklist.push("New Rule");
+            renderSettingsChecklist();
+        }
+
+        function removeRule(index) {
+            platformSettings.checklist.splice(index, 1);
+            renderSettingsChecklist();
+        }
+
+        function savePlatformSettings() {
+            platformSettings.title = document.getElementById('sPlatformTitle').value || "TRADING JOURNAL";
+            platformSettings.handle = document.getElementById('sHandle').value || "@trader";
+            platformSettings.handleLink = document.getElementById('sHandleLink').value || "#";
+            platformSettings.quoteText = document.getElementById('sQuoteText').value || "Stay disciplined.";
+            platformSettings.quoteAuthor = document.getElementById('sQuoteAuthor').value || "Anonymous";
+            
+            // Gather rules
+            const inputs = document.querySelectorAll('.rule-input');
+            platformSettings.checklist = Array.from(inputs).map(inp => inp.value).filter(val => val.trim() !== "");
+
+            localStorage.setItem('ictPlatformSettings', JSON.stringify(platformSettings));
+            applyPlatformBranding();
+            closeSettingsModal();
         }
 
         // Realized RR Calculation Engine
@@ -662,13 +809,20 @@
         exitInput.addEventListener('input', calcRR); contractsInput.addEventListener('input', calcRR); 
         partialsInput.addEventListener('input', calcRR);
 
-        // --- STATE STORAGE ---
+        // --- ACCOUNT AND TRADE STATE STORAGE ---
         let accounts = JSON.parse(localStorage.getItem('ictAccounts_v3')) || [
             { id: 'default_1', name: 'Alpha Eval 1', firm: 'Alpha', type: 'Evaluation', startBal: 50000, targetBal: 53000, trailingLimit: 2000 }
         ];
         
         let activeAccountId = localStorage.getItem('ictActiveAccount_v3') || accounts[0].id;
-        let tradesData = JSON.parse(localStorage.getItem('ictJournal_v3')) || [];
+        
+        // Data Rescue: Pulls data safely from older versions if v4 is empty
+        let tradesData = JSON.parse(localStorage.getItem('ictJournal_v4'));
+        if (!tradesData || tradesData.length === 0) {
+            tradesData = JSON.parse(localStorage.getItem('ictJournal_v3')) || JSON.parse(localStorage.getItem('ictJournal_v2')) || [];
+            localStorage.setItem('ictJournal_v4', JSON.stringify(tradesData));
+        }
+
         let pnlChartInstance = null;
 
         function saveAccountsState() {
@@ -729,7 +883,7 @@
             if (accounts.length <= 1) { alert("You must have at least one account."); return; }
             if (confirm("Delete this account and all its trades?")) {
                 tradesData = tradesData.filter(t => t.accountId !== activeAccountId);
-                localStorage.setItem('ictJournal_v3', JSON.stringify(tradesData));
+                localStorage.setItem('ictJournal_v4', JSON.stringify(tradesData));
                 accounts = accounts.filter(a => a.id !== activeAccountId);
                 activeAccountId = accounts[0].id;
                 saveAccountsState();
@@ -812,11 +966,15 @@
                     ? `<br><span style="color:var(--accent-red); font-size: 0.65rem;">Mistake: ${tradeLossReason}</span>` 
                     : '';
 
+                // Handle missing properties safely from v2/v3 data
+                const setupString = trade.Setups || `${trade.ChecklistScore || "?"} Rules Met`;
+                const killzoneStr = trade.Killzone || 'N/A';
+
                 // Render Table (Insert newest at top)
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td>${trade.Date} <br> <span style="font-size:0.65rem; color:var(--text-muted)">${trade.Killzone}</span></td>
-                    <td><span style="color:var(--accent-gold); font-weight:700;">[${tradeGrade}]</span> ${trade.Setups} ${mistakeHtml} ${chartLinkHTML}</td>
+                    <td>${trade.Date} <br> <span style="font-size:0.65rem; color:var(--text-muted)">${killzoneStr}</span></td>
+                    <td><span style="color:var(--accent-gold); font-weight:700;">[${tradeGrade}]</span> ${setupString} ${mistakeHtml} ${chartLinkHTML}</td>
                     <td>${trade.RR} R</td>
                     <td style="color:var(--text-muted)">Min: $${currentTrailingThreshold.toLocaleString()}</td>
                     <td class="${trade.PNL >= 0 ? 'text-green' : 'text-red'}">${trade.PNL >= 0 ? '+$' : '-$'}${Math.abs(trade.PNL)}</td>
@@ -967,8 +1125,11 @@
             if (isNaN(pnlValue)) { alert("Please enter a valid Profit/Loss amount."); return; }
 
             const activeAcc = accounts.find(a => a.id === activeAccountId);
-            const cbs = document.querySelectorAll('#setupCheckboxes input[type="checkbox"]:checked');
-            const tags = Array.from(cbs).map(cb => cb.value).join(', ') || "None";
+            
+            // Generate Setup String from dynamic checklist
+            const checksTotal = document.querySelectorAll('.preflight-check').length;
+            const checksDone = document.querySelectorAll('.preflight-check:checked').length;
+            const setupString = checksTotal > 0 ? `${checksDone}/${checksTotal} Rules Met` : "Executed";
 
             const newTrade = {
                 id: Date.now(),
@@ -979,7 +1140,8 @@
                 Contracts: document.getElementById('tContracts').value || "1",
                 NewsImpact: document.getElementById('tNewsImpact').value,
                 EmotionBefore: document.getElementById('tEmotionBefore').value,
-                Setups: tags,
+                Setups: setupString,
+                ChecklistScore: `${checksDone}/${checksTotal}`,
                 Grade: activeGrade,
                 LossReason: document.getElementById('tLossReason').value,
                 ChartLink: document.getElementById('tChartLink').value,
@@ -990,7 +1152,7 @@
             };
 
             tradesData.push(newTrade);
-            localStorage.setItem('ictJournal_v3', JSON.stringify(tradesData));
+            localStorage.setItem('ictJournal_v4', JSON.stringify(tradesData));
             
             // Clear inputs
             document.getElementById('pnl').value = ""; document.getElementById('tImprovement').value = "";
@@ -1001,7 +1163,6 @@
             // Clear checklist
             document.querySelectorAll('.preflight-check').forEach(cb => cb.checked = false);
             calculateGrade();
-            cbs.forEach(cb => cb.checked = false);
             
             renderDashboard();
         }
@@ -1022,7 +1183,7 @@
 
         function deleteTrade(id) {
             tradesData = tradesData.filter(trade => trade.id !== id);
-            localStorage.setItem('ictJournal_v3', JSON.stringify(tradesData));
+            localStorage.setItem('ictJournal_v4', JSON.stringify(tradesData));
             renderDashboard();
         }
 
@@ -1031,7 +1192,7 @@
             const ws = XLSX.utils.json_to_sheet(tradesData);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Logs");
-            XLSX.writeFile(wb, "Yanshi_Trading_Logs.xlsx");
+            XLSX.writeFile(wb, "Trading_Logs.xlsx");
         }
 
         function generateAIFeedback(filteredTrades, totalPnl) {
@@ -1046,8 +1207,8 @@
             document.getElementById('aiOutput').innerText = f;
         }
 
-        // Init App
-        calculateGrade();
+        // Initialize App
+        applyPlatformBranding();
         renderDashboard();
     </script>
 </body>
