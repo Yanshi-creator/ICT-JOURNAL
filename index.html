@@ -162,12 +162,10 @@
                 <div class="form-group">
                     <label>Killzone</label>
                     <select id="tKillzone">
-                    <option>Asia</option>
-
-                        <option>London</option>
+                        <option>London Open</option>
                         <option>NY AM Session</option>
                         <option>NY PM Session</option>
-                        <option>other</option>
+                        <option>Macro</option>
                     </select>
                 </div>
             </div>
@@ -195,7 +193,7 @@
                 <div class="form-group">
                     <label>Emotion Before Trade</label>
                     <select id="tEmotionBefore">
-                        <option>Calm</option><option>Patient</option><option>FOMO / Rushed</option><option>Anxious</option>
+                        <option>Calm / Focused</option><option>Patient</option><option>FOMO / Rushed</option><option>Anxious</option>
                     </select>
                 </div>
             </div>
@@ -233,7 +231,7 @@
             <!-- DYNAMIC PRE-FLIGHT CHECKLIST (AUTO GRADE) -->
             <div class="checklist-container">
                 <div class="checklist-header">
-                    <h4>rules followed?</h4>
+                    <h4>Pre-Flight Alignment</h4>
                     <span class="auto-grade" id="autoGradeDisplay">[B]</span>
                 </div>
                 <div id="dynamicChecklist">
@@ -388,12 +386,22 @@
                 <label>Account Name / Label</label>
                 <input type="text" id="mAccName" placeholder="e.g. Topstep XFA 1">
             </div>
+            
+            <!-- DYNAMIC FIRM INPUT -->
             <div class="form-group">
                 <label>Firm Name</label>
-                <select id="mAccFirm">
-                    <option>Alpha</option><option>Apex</option><option>Topstep</option><option>Lucid</option>
-                </select>
+                <input type="text" id="mAccFirm" list="firmSuggestions" placeholder="e.g. Alpha, Apex, Personal...">
+                <datalist id="firmSuggestions">
+                    <option value="Alpha">
+                    <option value="Apex">
+                    <option value="Topstep">
+                    <option value="Lucid">
+                    <option value="MyFundedFX">
+                    <option value="TradeDay">
+                    <option value="Personal Broker">
+                </datalist>
             </div>
+
             <div class="form-group">
                 <label>Account Type</label>
                 <select id="mAccType">
@@ -427,7 +435,7 @@
     <div class="modal-overlay" id="settingsModal">
         <div class="modal">
             <h3>Checklist Rules</h3>
-            <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:10px;">Customize your Pre-Flight alignment rules. This dictates your A+ setup grade.</p>
+            <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:10px;">Customize your Pre-Flight alignment rules. This dictates your setup grading.</p>
             <div class="form-group">
                 <div class="settings-rule-list" id="settingsChecklist">
                     <!-- Rules populated by JS -->
@@ -447,7 +455,7 @@
         const entryInput = document.getElementById('entry'), stopInput = document.getElementById('stop'), exitInput = document.getElementById('exit'), rrOutput = document.getElementById('rr');
         const contractsInput = document.getElementById('tContracts'), partialsInput = document.getElementById('tPartials');
         let currentRR = 0;
-        let activeGrade = "B";
+        let activeGrade = "C";
 
         // --- PLATFORM SETTINGS (CHECKLIST ONLY) ---
         let platformSettings = JSON.parse(localStorage.getItem('ictPlatformSettings_v5')) || {
@@ -473,7 +481,7 @@
             calculateGrade();
         }
 
-        // Pre-Flight Grading Engine (Dynamic Percentage)
+        // Pre-Flight Grading Engine (Dynamic Percentage w/ C+ and C)
         function calculateGrade() {
             const total = document.querySelectorAll('.preflight-check').length;
             const checked = document.querySelectorAll('.preflight-check:checked').length;
@@ -486,10 +494,13 @@
             }
 
             const percentage = checked / total;
+            
             if (percentage === 1) activeGrade = "A+";
-            else if (percentage >= 0.8) activeGrade = "A";
-            else if (percentage >= 0.6) activeGrade = "B+";
-            else activeGrade = "B";
+            else if (percentage >= 0.85) activeGrade = "A";
+            else if (percentage >= 0.70) activeGrade = "B+";
+            else if (percentage >= 0.55) activeGrade = "B";
+            else if (percentage >= 0.40) activeGrade = "C+";
+            else activeGrade = "C";
             
             display.innerText = `[${activeGrade}]`;
         }
@@ -633,7 +644,7 @@
 
         function createNewAccount() {
             const name = document.getElementById('mAccName').value || "New Account";
-            const firm = document.getElementById('mAccFirm').value;
+            const firm = document.getElementById('mAccFirm').value || "Personal";
             const type = document.getElementById('mAccType').value;
             const startBal = parseFloat(document.getElementById('mAccStart').value) || 50000;
             const targetBal = parseFloat(document.getElementById('mAccTarget').value) || 53000;
