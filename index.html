@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Yanshi's Journal - ICT Platform</title>
+    <title>Yanshi Snipes | Trading Journal</title>
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- SheetJS for Excel Export -->
@@ -45,12 +45,22 @@
         }
 
         .header h4 {
-            color: var(--accent-gold);
             font-size: 0.8rem;
             letter-spacing: 2px;
             text-transform: uppercase;
             margin-bottom: 5px;
             font-weight: 700;
+            color: var(--text-muted);
+        }
+        
+        .header h4 a {
+            color: var(--accent-gold);
+            text-decoration: none;
+            transition: opacity 0.2s;
+        }
+        
+        .header h4 a:hover {
+            opacity: 0.8;
         }
 
         .header h1 { 
@@ -162,6 +172,34 @@
         }
         .log-btn:hover { opacity: 0.9; }
 
+        /* Branding Footer */
+        .brand-footer {
+            margin-top: 25px;
+            text-align: center;
+            border-top: 1px solid var(--border-color);
+            padding-top: 15px;
+        }
+        .motivation { 
+            font-size: 0.8rem; 
+            color: var(--accent-gold); 
+            letter-spacing: 3px; 
+            font-weight: 700; 
+            opacity: 0.8; 
+            text-transform: uppercase; 
+        }
+        .ig-link {
+            display: inline-block;
+            margin-top: 6px;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-decoration: none;
+            letter-spacing: 1px;
+            transition: color 0.2s;
+        }
+        .ig-link:hover {
+            color: var(--accent-gold);
+        }
+
         /* Right Panel */
         .right-panel { display: flex; flex-direction: column; gap: 20px; }
         
@@ -241,7 +279,7 @@
 
     <div class="header">
         <div>
-            <h4>NY AM Session</h4>
+            <h4><a href="https://instagram.com/yanshi.snipes" target="_blank">@yanshi.snipes</a> | NY AM Session</h4>
             <h1>YANSHI'S JOURNAL</h1>
         </div>
         <div class="header-actions">
@@ -307,6 +345,7 @@
                 <label><input type="checkbox" value="iFVG"> iFVG</label>
                 <label><input type="checkbox" value="PD Array"> PD Array</label>
                 <label><input type="checkbox" value="BOS"> BOS</label>
+                <label><input type="checkbox" value="MSS"> MSS</label>
             </div>
 
             <div class="form-row">
@@ -347,6 +386,12 @@
             </div>
 
             <button class="log-btn" onclick="logTrade()">Log Trade</button>
+
+            <!-- BRANDING FOOTER -->
+            <div class="brand-footer">
+                <div class="motivation">You are the 1%</div>
+                <a href="https://instagram.com/yanshi.snipes" target="_blank" class="ig-link">instagram.com/yanshi.snipes</a>
+            </div>
         </div>
 
         <!-- RIGHT PANEL -->
