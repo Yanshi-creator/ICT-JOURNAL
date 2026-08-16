@@ -93,6 +93,9 @@
         .calendar-container { background-color: var(--bg-panel); border-radius: 12px; border: 1px solid var(--border-color); padding: 15px; display: flex; flex-direction: column; }
         .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
         .calendar-header h4 { font-size: 0.85rem; color: var(--text-main); }
+        .cal-nav { background: transparent; color: var(--text-muted); border: none; cursor: pointer; font-size: 0.9rem; transition: color 0.2s; padding: 0 5px; }
+        .cal-nav:hover { color: var(--accent-gold); }
+        
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
         .day-label { text-align: center; font-size: 0.65rem; color: var(--text-muted); font-weight: 700; margin-bottom: 4px;}
         .cal-cell { aspect-ratio: 1; border-radius: 4px; background-color: var(--cell-empty); display: flex; flex-direction: column; justify-content: center; align-items: center; font-size: 0.65rem; font-weight: 600; color: var(--text-muted); text-align: center;}
@@ -332,7 +335,9 @@
                 <!-- CALENDAR -->
                 <div class="calendar-container">
                     <div class="calendar-header">
+                        <button class="cal-nav" onclick="changeMonth(-1)">&#9664;</button>
                         <h4 id="calMonthDisplay">Trading Calendar</h4>
+                        <button class="cal-nav" onclick="changeMonth(1)">&#9654;</button>
                     </div>
                     <div class="calendar-grid" id="calendarGrid">
                         <!-- Populated by JS -->
@@ -461,6 +466,22 @@
         const contractsInput = document.getElementById('tContracts'), partialsInput = document.getElementById('tPartials');
         let currentRR = 0;
         let activeGrade = "C";
+
+        // Global Calendar State
+        let displayedCalMonth = new Date().getMonth();
+        let displayedCalYear = new Date().getFullYear();
+
+        function changeMonth(dir) {
+            displayedCalMonth += dir;
+            if (displayedCalMonth < 0) {
+                displayedCalMonth = 11;
+                displayedCalYear--;
+            } else if (displayedCalMonth > 11) {
+                displayedCalMonth = 0;
+                displayedCalYear++;
+            }
+            renderDashboard(); 
+        }
 
         // --- PLATFORM SETTINGS (CHECKLIST ONLY) ---
         let platformSettings = JSON.parse(localStorage.getItem('ictPlatformSettings_v5')) || {
@@ -733,7 +754,6 @@
                 const dateStr = trade.Date; 
                 dailyPnlMap[dateStr] = (dailyPnlMap[dateStr] || 0) + trade.PNL;
 
-                // Robust defaults for safely pulled older trades
                 const tradeGrade = trade.Grade || 'N/A';
                 const setupString = trade.Setups || `${trade.ChecklistScore || "?"} Rules Met`;
                 const killzoneStr = trade.Killzone || 'N/A';
@@ -747,7 +767,7 @@
                     <td>${directionStr}<span style="color:var(--accent-gold); font-weight:700;">[${tradeGrade}]</span> ${setupString}</td>
                     <td>${trade.RR} R ${handlesStr}</td>
                     <td style="color:var(--text-muted)">Min: $${currentTrailingThreshold.toLocaleString()}</td>
-                    <td class="${trade.PNL >= 0 ? 'text-green' : 'text-red'}">${trade.PNL >= 0 ? '+$' : '-$'}${Math.abs(trade.PNL)}</td>
+                    <td class="${trade.PNL >= 0 ? 'text-green' : 'text-red'}">${trade.PNL >= 0 ? '+$' : '-$'}${Math.abs(trade.PNL).toLocaleString()}</td>
                     <td><button class="delete-btn" onclick="deleteTrade(${trade.id})">Del</button></td>
                 `;
                 tbody.insertBefore(tr, tbody.firstChild);
@@ -757,7 +777,7 @@
             document.getElementById('winRate').innerText = filteredTrades.length ? ((wins / filteredTrades.length) * 100).toFixed(0) + "%" : "0%";
             
             const netEl = document.getElementById('netPnl');
-            netEl.innerText = (totalPnl >= 0 ? "+$" : "-$") + Math.abs(totalPnl);
+            netEl.innerText = (totalPnl >= 0 ? "+$" : "-$") + Math.abs(totalPnl).toLocaleString();
             netEl.className = totalPnl >= 0 ? "value green" : "value red";
 
             const currentBalance = activeAcc.startBal + totalPnl;
@@ -766,11 +786,11 @@
             balanceEl.className = currentBalance < activeAcc.startBal ? "value red" : "value green";
 
             const wPnlEl = document.getElementById('weeklyPnl');
-            wPnlEl.innerText = (weeklyPnl >= 0 ? "+$" : "-$") + Math.abs(weeklyPnl);
+            wPnlEl.innerText = (weeklyPnl >= 0 ? "+$" : "-$") + Math.abs(weeklyPnl).toLocaleString();
             wPnlEl.className = weeklyPnl >= 0 ? "val green" : "val red";
 
             const mPnlEl = document.getElementById('monthlyPnl');
-            mPnlEl.innerText = (monthlyPnl >= 0 ? "+$" : "-$") + Math.abs(monthlyPnl);
+            mPnlEl.innerText = (monthlyPnl >= 0 ? "+$" : "-$") + Math.abs(monthlyPnl).toLocaleString();
             mPnlEl.className = monthlyPnl >= 0 ? "val green" : "val red";
 
             const neededProfit = activeAcc.targetBal - activeAcc.startBal;
@@ -825,9 +845,8 @@
                 grid.appendChild(el);
             });
 
-            const now = new Date();
-            const year = now.getFullYear();
-            const month = now.getMonth();
+            const year = displayedCalYear;
+            const month = displayedCalMonth;
             const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
             document.getElementById('calMonthDisplay').innerText = monthNames[month] + " " + year;
 
@@ -851,8 +870,8 @@
                     const pnl = dailyPnlMap[dateKey];
                     if (pnl > 0) cell.classList.add('green');
                     else if (pnl < 0) cell.classList.add('red');
-                    // INJECT DOLLAR AMOUNT DIRECTLY INTO CALENDAR CELL
-                    cell.innerHTML = `${d}<br><span style="font-size:0.55rem; font-weight:800; margin-top:2px;">${pnl > 0 ? '+$' : '-$'}${Math.abs(pnl)}</span>`;
+                    
+                    cell.innerHTML = `${d}<br><span style="font-size:0.55rem; font-weight:800; margin-top:2px;">${pnl > 0 ? '+$' : '-$'}${Math.abs(pnl).toLocaleString()}</span>`;
                 } else {
                     cell.innerText = d;
                 }
@@ -898,10 +917,12 @@
             const checksDone = document.querySelectorAll('.preflight-check:checked').length;
             const setupString = checksTotal > 0 ? `${checksDone}/${checksTotal} Rules Met` : "Executed";
 
+            const dateVal = document.getElementById('tDate').value;
+            
             const newTrade = {
                 id: Date.now(),
                 accountId: activeAccountId,
-                Date: document.getElementById('tDate').value,
+                Date: dateVal,
                 Time: document.getElementById('tTime').value || "--:--",
                 Killzone: document.getElementById('tKillzone').value,
                 Direction: document.getElementById('tDirection').value,
@@ -922,6 +943,13 @@
             tradesData.push(newTrade);
             localStorage.setItem('ictJournal_v6', JSON.stringify(tradesData));
             
+            // Auto switch calendar to the month of the logged trade
+            if(dateVal) {
+                const parts = dateVal.split('-');
+                displayedCalYear = parseInt(parts[0]);
+                displayedCalMonth = parseInt(parts[1]) - 1;
+            }
+
             // Clear inputs
             document.getElementById('pnl').value = ""; document.getElementById('tImprovement').value = "";
             document.getElementById('tPartials').value = ""; entryInput.value = ""; stopInput.value = ""; 
