@@ -176,6 +176,13 @@
                     <input type="number" id="tContracts" placeholder="e.g. 5">
                 </div>
                 <div class="form-group">
+                    <label>Direction</label>
+                    <select id="tDirection">
+                        <option>Long</option>
+                        <option>Short</option>
+                    </select>
+                </div>
+                <div class="form-group">
                     <label>Duration (Mins)</label>
                     <input type="number" id="tDuration" placeholder="e.g. 15">
                 </div>
@@ -228,6 +235,17 @@
                 </div>
             </div>
 
+            <div class="form-row">
+                <div class="form-group">
+                    <label>SL Handles</label>
+                    <input type="number" id="tSLHandles" step="any" placeholder="e.g. 15">
+                </div>
+                <div class="form-group">
+                    <label>TP Handles</label>
+                    <input type="number" id="tTPHandles" step="any" placeholder="e.g. 45">
+                </div>
+            </div>
+
             <!-- DYNAMIC PRE-FLIGHT CHECKLIST (AUTO GRADE) -->
             <div class="checklist-container">
                 <div class="checklist-header">
@@ -236,19 +254,6 @@
                 </div>
                 <div id="dynamicChecklist">
                     <!-- Populated by JS based on user settings -->
-                </div>
-            </div>
-
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Reason for Loss (If loss)</label>
-                    <select id="tLossReason">
-                        <option>N/A (Win/BE)</option>
-                        <option>FOMO / Impatient</option>
-                        <option>No PD Array</option>
-                        <option>Weak Setup / Forced</option>
-                        <option>Greed / Didn't secure partials</option>
-                    </select>
                 </div>
             </div>
 
@@ -396,11 +401,9 @@
                     <option value="Apex">
                     <option value="Topstep">
                     <option value="Lucid">
-                   <option value="backtest">
-                    <option value="Personal Broker">
                     <option value="MyFundedFX">
                     <option value="TradeDay">
-                    <option value="other">
+                    <option value="Personal Broker">
                 </datalist>
             </div>
 
@@ -598,11 +601,15 @@
         ];
         let activeAccountId = localStorage.getItem('ictActiveAccount_v3') || accounts[0].id;
         
-        // Data Rescue Sequence
-        let tradesData = JSON.parse(localStorage.getItem('ictJournal_v5'));
+        // Data Rescue Sequence (Safely upgrades to v6 to accommodate new Handle/Direction fields without losing old trades)
+        let tradesData = JSON.parse(localStorage.getItem('ictJournal_v6'));
         if (!tradesData || tradesData.length === 0) {
-            tradesData = JSON.parse(localStorage.getItem('ictJournal_v4')) || JSON.parse(localStorage.getItem('ictJournal_v3')) || JSON.parse(localStorage.getItem('ictJournal_v2')) || [];
-            localStorage.setItem('ictJournal_v5', JSON.stringify(tradesData));
+            tradesData = JSON.parse(localStorage.getItem('ictJournal_v5')) 
+                      || JSON.parse(localStorage.getItem('ictJournal_v4')) 
+                      || JSON.parse(localStorage.getItem('ictJournal_v3')) 
+                      || JSON.parse(localStorage.getItem('ictJournal_v2')) 
+                      || [];
+            localStorage.setItem('ictJournal_v6', JSON.stringify(tradesData));
         }
 
         let pnlChartInstance = null;
@@ -665,7 +672,7 @@
             if (accounts.length <= 1) { alert("You must have at least one account."); return; }
             if (confirm("Delete this account and all its trades?")) {
                 tradesData = tradesData.filter(t => t.accountId !== activeAccountId);
-                localStorage.setItem('ictJournal_v5', JSON.stringify(tradesData));
+                localStorage.setItem('ictJournal_v6', JSON.stringify(tradesData));
                 accounts = accounts.filter(a => a.id !== activeAccountId);
                 activeAccountId = accounts[0].id;
                 saveAccountsState();
@@ -726,21 +733,19 @@
                 const dateStr = trade.Date; 
                 dailyPnlMap[dateStr] = (dailyPnlMap[dateStr] || 0) + trade.PNL;
 
+                // Robust defaults for safely pulled older trades
                 const tradeGrade = trade.Grade || 'N/A';
-                const tradeLossReason = trade.LossReason || 'N/A (Win/BE)';
-                
-                const mistakeHtml = (trade.PNL < 0 && tradeLossReason !== 'N/A (Win/BE)') 
-                    ? `<br><span style="color:var(--accent-red); font-size: 0.65rem;">Mistake: ${tradeLossReason}</span>` 
-                    : '';
-
                 const setupString = trade.Setups || `${trade.ChecklistScore || "?"} Rules Met`;
                 const killzoneStr = trade.Killzone || 'N/A';
+                
+                const directionStr = trade.Direction ? `<span style="color:var(--text-main); font-weight:800; font-size:0.75rem;">[${trade.Direction.toUpperCase()}]</span> ` : '';
+                const handlesStr = (trade.SLHandles || trade.TPHandles) ? `<br><span style="font-size:0.65rem; color:var(--text-muted)">SL: ${trade.SLHandles||0} | TP: ${trade.TPHandles||0}</span>` : '';
 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${trade.Date} <br> <span style="font-size:0.65rem; color:var(--text-muted)">${killzoneStr}</span></td>
-                    <td><span style="color:var(--accent-gold); font-weight:700;">[${tradeGrade}]</span> ${setupString} ${mistakeHtml}</td>
-                    <td>${trade.RR} R</td>
+                    <td>${directionStr}<span style="color:var(--accent-gold); font-weight:700;">[${tradeGrade}]</span> ${setupString}</td>
+                    <td>${trade.RR} R ${handlesStr}</td>
                     <td style="color:var(--text-muted)">Min: $${currentTrailingThreshold.toLocaleString()}</td>
                     <td class="${trade.PNL >= 0 ? 'text-green' : 'text-red'}">${trade.PNL >= 0 ? '+$' : '-$'}${Math.abs(trade.PNL)}</td>
                     <td><button class="delete-btn" onclick="deleteTrade(${trade.id})">Del</button></td>
@@ -899,25 +904,28 @@
                 Date: document.getElementById('tDate').value,
                 Time: document.getElementById('tTime').value || "--:--",
                 Killzone: document.getElementById('tKillzone').value,
+                Direction: document.getElementById('tDirection').value,
                 Contracts: document.getElementById('tContracts').value || "1",
                 NewsImpact: document.getElementById('tNewsImpact').value,
                 EmotionBefore: document.getElementById('tEmotionBefore').value,
                 Setups: setupString,
                 ChecklistScore: `${checksDone}/${checksTotal}`,
                 Grade: activeGrade,
-                LossReason: document.getElementById('tLossReason').value,
                 Entry: entryInput.value, StopLoss: stopInput.value, Exit: exitInput.value,
+                SLHandles: document.getElementById('tSLHandles').value || "0",
+                TPHandles: document.getElementById('tTPHandles').value || "0",
                 RR: currentRR,
                 PNL: pnlValue,
                 Improvement: document.getElementById('tImprovement').value
             };
 
             tradesData.push(newTrade);
-            localStorage.setItem('ictJournal_v5', JSON.stringify(tradesData));
+            localStorage.setItem('ictJournal_v6', JSON.stringify(tradesData));
             
+            // Clear inputs
             document.getElementById('pnl').value = ""; document.getElementById('tImprovement').value = "";
             document.getElementById('tPartials').value = ""; entryInput.value = ""; stopInput.value = ""; 
-            exitInput.value = ""; rrOutput.value = ""; document.getElementById('tLossReason').selectedIndex = 0;
+            exitInput.value = ""; rrOutput.value = ""; document.getElementById('tSLHandles').value = ""; document.getElementById('tTPHandles').value = "";
             
             document.querySelectorAll('.preflight-check').forEach(cb => cb.checked = false);
             calculateGrade();
@@ -932,7 +940,7 @@
             const t = filteredTrades[filteredTrades.length - 1]; 
             const pnlStr = t.PNL >= 0 ? `+$${t.PNL}` : `-$${Math.abs(t.PNL)}`;
             
-            const snipeText = `🎯 Snipe Executed\nAccount: ${accounts.find(a => a.id === activeAccountId).name}\nSession: ${t.Killzone}\nSetup: [${t.Grade}] ${t.Setups}\nRealized RR: ${t.RR}R\nPNL: ${pnlStr}`;
+            const snipeText = `🎯 Snipe Executed\nAccount: ${accounts.find(a => a.id === activeAccountId).name}\nSession: ${t.Killzone}\nDirection: ${t.Direction || 'N/A'}\nTargets: ${t.SLHandles || 0} SL | ${t.TPHandles || 0} TP\nSetup: [${t.Grade}] ${t.Setups}\nRealized RR: ${t.RR}R\nPNL: ${pnlStr}`;
             
             navigator.clipboard.writeText(snipeText).then(() => {
                 alert("Snipe details copied to clipboard!");
@@ -941,7 +949,7 @@
 
         function deleteTrade(id) {
             tradesData = tradesData.filter(trade => trade.id !== id);
-            localStorage.setItem('ictJournal_v5', JSON.stringify(tradesData));
+            localStorage.setItem('ictJournal_v6', JSON.stringify(tradesData));
             renderDashboard();
         }
 
@@ -961,7 +969,7 @@
             }
 
             let aGradeWins = 0, aGradeTotal = 0;
-            let fomoLosses = 0;
+            let emotionMistakes = 0;
             let totalPnl = 0;
             let sessionPnl = { "London Open": 0, "NY AM Session": 0, "NY PM Session": 0, "Macro": 0 };
 
@@ -973,8 +981,8 @@
                     if(t.PNL > 0) aGradeWins++;
                 }
 
-                if((t.EmotionBefore && t.EmotionBefore.includes("FOMO")) || (t.LossReason && t.LossReason.includes("FOMO"))) {
-                    if(t.PNL < 0) fomoLosses++; 
+                if(t.EmotionBefore && (t.EmotionBefore.includes("FOMO") || t.EmotionBefore.includes("Revenge") || t.EmotionBefore.includes("Anxious"))) {
+                    if(t.PNL < 0) emotionMistakes++; 
                 }
 
                 if(t.Killzone && sessionPnl[t.Killzone] !== undefined) {
@@ -987,12 +995,12 @@
             if (aGradeTotal > 0) {
                 let aWinRate = ((aGradeWins / aGradeTotal) * 100).toFixed(0);
                 feedbackStr += `• Your A/A+ setups hold a ${aWinRate}% win rate. `;
-                if (aWinRate < 40) feedbackStr += `You need to review your HTF alignment rules, they aren't translating to wins.<br>`;
+                if (aWinRate < 40) feedbackStr += `Review your HTF alignment rules; they aren't translating to wins.<br>`;
                 else feedbackStr += `Trust your pre-flight checklist, the math proves it works.<br>`;
             }
 
-            if (fomoLosses > 0) {
-                feedbackStr += `• <span style="color:var(--accent-red)">Warning:</span> FOMO has directly caused ${fomoLosses} losses on this account.<br>`;
+            if (emotionMistakes > 0) {
+                feedbackStr += `• <span style="color:var(--accent-red)">Warning:</span> Poor pre-trade emotions (FOMO/Anxiety) have directly correlated with ${emotionMistakes} losses.<br>`;
             }
 
             // Find best and worst sessions
