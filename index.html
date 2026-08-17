@@ -8,6 +8,10 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- SheetJS for Excel Export -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Firebase SDKs (Compat version for simple single-file deployment) -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     
     <style>
         :root {
@@ -26,15 +30,31 @@
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
         body { background-color: var(--bg-main); color: var(--text-main); padding: 25px 35px; }
 
+        /* Auth Screen Overlay */
+        .auth-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #0a0a0c; display: flex; justify-content: center; align-items: center; z-index: 9999;
+        }
+        .auth-card {
+            background-color: var(--bg-panel); border: 1px solid var(--border-color);
+            padding: 35px 30px; border-radius: 12px; width: 380px; display: flex; flex-direction: column; gap: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .auth-card h2 { color: var(--accent-gold); font-size: 1.4rem; text-align: center; font-weight: 800; letter-spacing: 1px;}
+        .auth-card p { font-size: 0.8rem; color: var(--text-muted); text-align: center; margin-top: -8px; }
+        .auth-toggle { font-size: 0.75rem; color: var(--accent-gold); text-align: center; cursor: pointer; text-decoration: underline; margin-top: 5px; }
+        .auth-error { font-size: 0.75rem; color: var(--accent-red); text-align: center; display: none; }
+
         /* Header */
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
         .header h4 { font-size: 0.8rem; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 5px; font-weight: 700; color: var(--text-muted); }
         .header h4 a { color: var(--accent-gold); text-decoration: none; transition: opacity 0.2s; }
         .header h4 a:hover { opacity: 0.8; }
         .header h1 { font-size: 1.8rem; letter-spacing: 1px; font-weight: 800; }
-        .header-actions { display: flex; gap: 12px; align-items: center; }
+        .header-actions { display: flex; gap: 10px; align-items: center; }
 
         /* Buttons & Inputs */
+        .user-tag { font-size: 0.75rem; color: var(--text-muted); background: var(--bg-panel); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); }
         .account-switcher { background-color: var(--bg-panel); border: 1px solid var(--accent-gold); color: var(--accent-gold); padding: 8px 14px; border-radius: 6px; font-weight: 600; font-size: 0.9rem; outline: none; cursor: pointer; }
         .btn-secondary { background-color: var(--bg-panel); color: var(--text-main); border: 1px solid var(--border-color); padding: 10px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
         .btn-secondary:hover { border-color: var(--accent-gold); color: var(--accent-gold); }
@@ -42,10 +62,9 @@
         .export-btn:hover { opacity: 0.9; }
 
         /* Layout */
-        .dashboard { display: grid; grid-template-columns: 450px 1fr; gap: 25px; }
+        .dashboard { display: grid; grid-template-columns: 440px 1fr; gap: 25px; }
         .log-panel { background-color: var(--bg-panel); padding: 25px; border-radius: 12px; border: 1px solid var(--border-color); display: flex; flex-direction: column; height: fit-content; }
         
-        /* Panel Tab Navigation */
         .panel-nav { display: flex; gap: 8px; margin-bottom: 18px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
         .panel-nav-btn { background: transparent; border: none; color: var(--text-muted); font-size: 0.9rem; font-weight: 700; cursor: pointer; padding: 6px 12px; border-radius: 6px; transition: all 0.2s; }
         .panel-nav-btn.active { background-color: rgba(234, 179, 8, 0.1); color: var(--accent-gold); }
@@ -58,7 +77,7 @@
         input:focus, select:focus, textarea:focus { border-color: var(--accent-gold); }
         input[readonly] { color: var(--accent-gold); font-weight: bold; background-color: rgba(234, 179, 8, 0.05); cursor: default; }
         input[type="date"]::-webkit-calendar-picker-indicator, input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); }
-        textarea { resize: vertical; min-height: 45px; }
+        textarea { resize: vertical; min-height: 40px; }
 
         /* Checklist */
         .checklist-container { background-color: var(--bg-input); border: 1px solid var(--border-color); border-radius: 6px; padding: 12px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 10px; }
@@ -138,17 +157,39 @@
 </head>
 <body>
 
+    <!-- AUTHENTICATION SCREEN -->
+    <div class="auth-overlay" id="authOverlay">
+        <div class="auth-card">
+            <h2>SNIPING JOURNAL</h2>
+            <p id="authSubtitle">Enter your credentials to access your private trading data</p>
+            <div class="form-group">
+                <label>Email Address</label>
+                <input type="email" id="authEmail" placeholder="trader@example.com">
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="authPassword" placeholder="••••••••">
+            </div>
+            <span class="auth-error" id="authErrorMsg">Error message here</span>
+            <button class="log-btn" id="authSubmitBtn" onclick="handleAuthSubmit()">Sign In</button>
+            <div class="auth-toggle" id="authToggleBtn" onclick="toggleAuthMode()">Need an account? Register here</div>
+        </div>
+    </div>
+
+    <!-- MAIN APP DASHBOARD -->
     <div class="header">
         <div>
             <h4><a href="https://instagram.com/yanshi.snipes" target="_blank">@yanshi.snipes</a></h4>
             <h1>SNIPING JOURNAL</h1>
         </div>
         <div class="header-actions">
+            <span class="user-tag" id="userEmailDisplay">Loading...</span>
             <select id="accountSelect" class="account-switcher" onchange="switchAccount()"></select>
             <button class="btn-secondary" onclick="openAddAccountModal()">+ New Account</button>
-            <button class="btn-secondary" onclick="copyLatestSnipe()">Copy Latest Snipe</button>
+            <button class="btn-secondary" onclick="copyLatestSnipe()">Copy Snipe</button>
             <button class="export-btn" onclick="exportToExcel()">Export</button>
             <button class="btn-secondary" onclick="openSettingsModal()">⚙️ Rules</button>
+            <button class="btn-secondary" onclick="signOutUser()">Log Out</button>
         </div>
     </div>
 
@@ -504,6 +545,149 @@
     </div>
 
     <script>
+        // ==========================================
+        // 1. FIREBASE CONFIGURATION 
+        // ==========================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyCAsxgIw7j68IYY9K8aWmzHQzKquWJw-4s",
+            authDomain: "journal-6f593.firebaseapp.com",
+            projectId: "journal-6f593",
+            storageBucket: "journal-6f593.firebasestorage.app",
+            messagingSenderId: "1094719260206",
+            appId: "1:1094719260206:web:2447aace8d802b5478c1bf",
+            measurementId: "G-PRBFDQ3J8Z"
+        };
+
+        // Initialize Firebase
+        let auth = null;
+        let db = null;
+        let currentUser = null;
+        let isAuthModeLogin = true;
+
+        if (firebaseConfig.apiKey !== "YOUR_API_KEY") {
+            firebase.initializeApp(firebaseConfig);
+            auth = firebase.auth();
+            db = firebase.firestore();
+        }
+
+        // ==========================================
+        // 2. AUTHENTICATION CONTROLLER
+        // ==========================================
+        function toggleAuthMode() {
+            isAuthModeLogin = !isAuthModeLogin;
+            const submitBtn = document.getElementById('authSubmitBtn');
+            const toggleBtn = document.getElementById('authToggleBtn');
+            const subtitle = document.getElementById('authSubtitle');
+            
+            if (isAuthModeLogin) {
+                submitBtn.innerText = "Sign In";
+                toggleBtn.innerText = "Need an account? Register here";
+                subtitle.innerText = "Enter your credentials to access your private trading data";
+            } else {
+                submitBtn.innerText = "Create Account";
+                toggleBtn.innerText = "Already have an account? Sign in";
+                subtitle.innerText = "Register your private account to sync data across all devices";
+            }
+        }
+
+        function handleAuthSubmit() {
+            const email = document.getElementById('authEmail').value.trim();
+            const password = document.getElementById('authPassword').value;
+            const errorMsg = document.getElementById('authErrorMsg');
+            errorMsg.style.display = "none";
+
+            if (!email || !password) {
+                errorMsg.innerText = "Please enter both email and password.";
+                errorMsg.style.display = "block";
+                return;
+            }
+
+            if (!auth) {
+                // Fallback offline access if keys fail
+                document.getElementById('authOverlay').style.display = "none";
+                document.getElementById('userEmailDisplay').innerText = email;
+                return;
+            }
+
+            if (isAuthModeLogin) {
+                auth.signInWithEmailAndPassword(email, password)
+                    .catch(err => {
+                        errorMsg.innerText = err.message;
+                        errorMsg.style.display = "block";
+                    });
+            } else {
+                auth.createUserWithEmailAndPassword(email, password)
+                    .then((cred) => {
+                        // Migrate local data to new user cloud on sign-up
+                        if (tradesData.length > 0) {
+                            saveCloudTrades(tradesData, cred.user.uid);
+                        }
+                    })
+                    .catch(err => {
+                        errorMsg.innerText = err.message;
+                        errorMsg.style.display = "block";
+                    });
+            }
+        }
+
+        function signOutUser() {
+            if (auth) {
+                auth.signOut();
+            } else {
+                document.getElementById('authOverlay').style.display = "flex";
+            }
+        }
+
+        // Firebase Auth State Listener
+        if (auth) {
+            auth.onAuthStateChanged(user => {
+                if (user) {
+                    currentUser = user;
+                    document.getElementById('authOverlay').style.display = "none";
+                    document.getElementById('userEmailDisplay').innerText = user.email;
+                    loadCloudUserData(user.uid);
+                } else {
+                    currentUser = null;
+                    document.getElementById('authOverlay').style.display = "flex";
+                }
+            });
+        }
+
+        // ==========================================
+        // 3. CLOUD / LOCAL SYNC STORAGE ENGINE
+        // ==========================================
+        function loadCloudUserData(uid) {
+            if (!db) return;
+            db.collection("users").doc(uid).get().then(doc => {
+                if (doc.exists) {
+                    const data = doc.data();
+                    if (data.trades) tradesData = data.trades;
+                    if (data.accounts) accounts = data.accounts;
+                    if (data.settings) platformSettings = data.settings;
+                    if (data.preMarketLogs) preMarketLogs = data.preMarketLogs;
+                    
+                    applyPlatformBranding();
+                    renderDashboard();
+                } else {
+                    // Seed initial cloud data with any local rescue data
+                    saveCloudTrades(tradesData, uid);
+                }
+            });
+        }
+
+        function saveCloudTrades(trades, uid = currentUser?.uid) {
+            localStorage.setItem('ictJournal_v8', JSON.stringify(trades));
+            if (db && uid) {
+                db.collection("users").doc(uid).set({
+                    trades: trades,
+                    accounts: accounts,
+                    settings: platformSettings,
+                    preMarketLogs: preMarketLogs
+                }, { merge: true });
+            }
+        }
+
+        // Initialize Form Dates
         document.getElementById('tDate').valueAsDate = new Date();
         document.getElementById('pmDate').valueAsDate = new Date();
 
@@ -563,6 +747,7 @@
                 notes: document.getElementById('pmNotes').value
             };
             localStorage.setItem('ictPreMarketLogs_v1', JSON.stringify(preMarketLogs));
+            if (currentUser) saveCloudTrades(tradesData);
             alert("Pre-Market Prep saved for " + date);
         }
 
@@ -619,7 +804,6 @@
             }
 
             const percentage = checked / total;
-            
             if (percentage === 1) activeGrade = "A+";
             else if (percentage >= 0.85) activeGrade = "A";
             else if (percentage >= 0.70) activeGrade = "B+";
@@ -667,6 +851,7 @@
             localStorage.setItem('ictPlatformSettings_v5', JSON.stringify(platformSettings));
             applyPlatformBranding();
             closeSettingsModal();
+            if (currentUser) saveCloudTrades(tradesData);
         }
 
         // Realized RR Engine
@@ -738,6 +923,7 @@
         function saveAccountsState() {
             localStorage.setItem('ictAccounts_v3', JSON.stringify(accounts));
             localStorage.setItem('ictActiveAccount_v3', activeAccountId);
+            if (currentUser) saveCloudTrades(tradesData);
         }
 
         function populateAccountDropdown() {
@@ -793,7 +979,7 @@
             if (accounts.length <= 1) { alert("You must have at least one account."); return; }
             if (confirm("Delete this account and all its trades?")) {
                 tradesData = tradesData.filter(t => t.accountId !== activeAccountId);
-                localStorage.setItem('ictJournal_v8', JSON.stringify(tradesData));
+                saveCloudTrades(tradesData);
                 accounts = accounts.filter(a => a.id !== activeAccountId);
                 activeAccountId = accounts[0].id;
                 saveAccountsState();
@@ -1038,7 +1224,7 @@
             };
 
             tradesData.push(newTrade);
-            localStorage.setItem('ictJournal_v8', JSON.stringify(tradesData));
+            saveCloudTrades(tradesData);
             
             if(dateVal) {
                 const parts = dateVal.split('-');
@@ -1072,7 +1258,7 @@
 
         function deleteTrade(id) {
             tradesData = tradesData.filter(trade => trade.id !== id);
-            localStorage.setItem('ictJournal_v8', JSON.stringify(tradesData));
+            saveCloudTrades(tradesData);
             renderDashboard();
         }
 
@@ -1092,7 +1278,6 @@
                 return;
             }
 
-            // Single Trade Analysis
             if (filteredTrades.length === 1) {
                 const t = filteredTrades[0];
                 let singleFb = `<strong>Trade #1 Diagnosis:</strong><br>`;
@@ -1116,13 +1301,11 @@
                 return;
             }
 
-            // Multi-Trade & Text-Pattern Analysis
             let aGradeWins = 0, aGradeTotal = 0;
             let emotionLosses = 0;
             let totalPnl = 0;
             let sessionPnl = { "London Open": 0, "NY AM Session": 0, "NY PM Session": 0, "Macro": 0 };
             
-            // Mistake keyword dictionary to scan user's "What could have been done better" text
             let mistakeKeywords = {
                 "chasing / fomo": ["chase", "chased", "fomo", "rush", "rushed", "impatient", "patience"],
                 "early exit / cutting winners": ["early", "cut", "fear", "scared", "panicked", "tp", "target"],
@@ -1148,7 +1331,6 @@
                     sessionPnl[t.Killzone] += t.PNL;
                 }
 
-                // Scan reflections text
                 if (t.Improvement) {
                     const text = t.Improvement.toLowerCase();
                     for (const [category, words] of Object.entries(mistakeKeywords)) {
@@ -1169,7 +1351,6 @@
                 feedbackStr += `• Pre-Flight Alignment: A/A+ setups show a <strong>${aWinRate}% Win Rate</strong> across ${aGradeTotal} executions.<br>`;
             }
 
-            // Report recurring reflections
             let topMistake = Object.keys(foundMistakes).reduce((a, b) => foundMistakes[a] > foundMistakes[b] ? a : b, null);
             if (topMistake && foundMistakes[topMistake] >= 1) {
                 feedbackStr += `• <span style="color:var(--accent-red)">Recurring Habit Flagged:</span> You've self-noted <em>'${topMistake}'</em> across ${foundMistakes[topMistake]} trade reflection(s). Focus on eliminating this specific pattern.<br>`;
