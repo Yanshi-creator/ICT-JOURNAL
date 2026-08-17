@@ -8,7 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- SheetJS for Excel Export -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <!-- Firebase SDKs (Compat version for simple single-file deployment) -->
+    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
@@ -571,6 +571,14 @@
         }
 
         // ==========================================
+        // LOCAL DATA STATE (CLEARED ON LOGOUT)
+        // ==========================================
+        let tradesData = [];
+        let accounts = [{ id: 'default_1', name: 'New Account', firm: 'Personal', type: 'Funded', startBal: 50000, targetBal: 53000, trailingLimit: 2000 }];
+        let activeAccountId = accounts[0].id;
+        let preMarketLogs = {};
+
+        // ==========================================
         // 2. AUTHENTICATION CONTROLLER
         // ==========================================
         function toggleAuthMode() {
@@ -602,13 +610,6 @@
                 return;
             }
 
-            if (!auth) {
-                // Fallback offline access if keys fail
-                document.getElementById('authOverlay').style.display = "none";
-                document.getElementById('userEmailDisplay').innerText = email;
-                return;
-            }
-
             if (isAuthModeLogin) {
                 auth.signInWithEmailAndPassword(email, password)
                     .catch(err => {
@@ -617,12 +618,6 @@
                     });
             } else {
                 auth.createUserWithEmailAndPassword(email, password)
-                    .then((cred) => {
-                        // Migrate local data to new user cloud on sign-up
-                        if (tradesData.length > 0) {
-                            saveCloudTrades(tradesData, cred.user.uid);
-                        }
-                    })
                     .catch(err => {
                         errorMsg.innerText = err.message;
                         errorMsg.style.display = "block";
@@ -632,7 +627,14 @@
 
         function signOutUser() {
             if (auth) {
-                auth.signOut();
+                auth.signOut().then(() => {
+                    // MEMORY WIPE: Clears dashboard so the next person sees nothing
+                    tradesData = [];
+                    accounts = [{ id: 'default_1', name: 'New Account', firm: 'Personal', type: 'Funded', startBal: 50000, targetBal: 53000, trailingLimit: 2000 }];
+                    activeAccountId = accounts[0].id;
+                    preMarketLogs = {};
+                    renderDashboard();
+                });
             } else {
                 document.getElementById('authOverlay').style.display = "flex";
             }
@@ -654,7 +656,7 @@
         }
 
         // ==========================================
-        // 3. CLOUD / LOCAL SYNC STORAGE ENGINE
+        // 3. CLOUD SYNC STORAGE ENGINE
         // ==========================================
         function loadCloudUserData(uid) {
             if (!db) return;
@@ -662,21 +664,30 @@
                 if (doc.exists) {
                     const data = doc.data();
                     if (data.trades) tradesData = data.trades;
+                    else tradesData = [];
+
                     if (data.accounts) accounts = data.accounts;
                     if (data.settings) platformSettings = data.settings;
                     if (data.preMarketLogs) preMarketLogs = data.preMarketLogs;
                     
+                    activeAccountId = accounts[0]?.id || 'default_1';
+                    
                     applyPlatformBranding();
                     renderDashboard();
                 } else {
-                    // Seed initial cloud data with any local rescue data
+                    // FRESH NEW USER SETUP
+                    tradesData = [];
+                    accounts = [{ id: 'default_1', name: 'New Account', firm: 'Personal', type: 'Funded', startBal: 50000, targetBal: 53000, trailingLimit: 2000 }];
+                    activeAccountId = accounts[0].id;
+                    preMarketLogs = {};
                     saveCloudTrades(tradesData, uid);
+                    applyPlatformBranding();
+                    renderDashboard();
                 }
             });
         }
 
         function saveCloudTrades(trades, uid = currentUser?.uid) {
-            localStorage.setItem('ictJournal_v8', JSON.stringify(trades));
             if (db && uid) {
                 db.collection("users").doc(uid).set({
                     trades: trades,
@@ -696,7 +707,6 @@
         let currentRR = 0;
         let activeGrade = "C";
 
-        // Global Calendar State
         let displayedCalMonth = new Date().getMonth();
         let displayedCalYear = new Date().getFullYear();
 
@@ -712,7 +722,6 @@
             renderDashboard(); 
         }
 
-        // Tab Navigation on Left Panel
         function switchLeftTab(tab) {
             const btnLog = document.getElementById('tabBtnLog');
             const btnPrep = document.getElementById('tabBtnPrep');
@@ -733,9 +742,6 @@
             }
         }
 
-        // Pre-Market Storage Engine
-        let preMarketLogs = JSON.parse(localStorage.getItem('ictPreMarketLogs_v1')) || {};
-
         function savePreMarketData() {
             const date = document.getElementById('pmDate').value;
             if (!date) return;
@@ -746,7 +752,6 @@
                 news: document.getElementById('pmNews').value,
                 notes: document.getElementById('pmNotes').value
             };
-            localStorage.setItem('ictPreMarketLogs_v1', JSON.stringify(preMarketLogs));
             if (currentUser) saveCloudTrades(tradesData);
             alert("Pre-Market Prep saved for " + date);
         }
@@ -768,8 +773,7 @@
             }
         }
 
-        // --- PLATFORM SETTINGS ---
-        let platformSettings = JSON.parse(localStorage.getItem('ictPlatformSettings_v5')) || {
+        let platformSettings = {
             checklist: [
                 "Wait 15 min after market open",
                 "Stopped at one trade per day limit",
@@ -848,13 +852,11 @@
         function savePlatformSettings() {
             const inputs = document.querySelectorAll('.rule-input');
             platformSettings.checklist = Array.from(inputs).map(inp => inp.value).filter(val => val.trim() !== "");
-            localStorage.setItem('ictPlatformSettings_v5', JSON.stringify(platformSettings));
             applyPlatformBranding();
             closeSettingsModal();
             if (currentUser) saveCloudTrades(tradesData);
         }
 
-        // Realized RR Engine
         function calcRR() {
             const ent = parseFloat(entryInput.value), stp = parseFloat(stopInput.value), ext = parseFloat(exitInput.value);
             const contracts = parseFloat(contractsInput.value) || 1;
@@ -900,29 +902,9 @@
         exitInput.addEventListener('input', calcRR); contractsInput.addEventListener('input', calcRR); 
         partialsInput.addEventListener('input', calcRR); directionInput.addEventListener('change', calcRR);
 
-        // Multi-Account & Data Rescue System (v8 Engine)
-        let accounts = JSON.parse(localStorage.getItem('ictAccounts_v3')) || [
-            { id: 'default_1', name: 'Alpha Eval 1', firm: 'Alpha', type: 'Evaluation', startBal: 50000, targetBal: 53000, trailingLimit: 2000 }
-        ];
-        let activeAccountId = localStorage.getItem('ictActiveAccount_v3') || accounts[0].id;
-        
-        let tradesData = JSON.parse(localStorage.getItem('ictJournal_v8'));
-        if (!tradesData || tradesData.length === 0) {
-            tradesData = JSON.parse(localStorage.getItem('ictJournal_v7')) 
-                      || JSON.parse(localStorage.getItem('ictJournal_v6')) 
-                      || JSON.parse(localStorage.getItem('ictJournal_v5')) 
-                      || JSON.parse(localStorage.getItem('ictJournal_v4')) 
-                      || JSON.parse(localStorage.getItem('ictJournal_v3')) 
-                      || JSON.parse(localStorage.getItem('ictJournal_v2')) 
-                      || [];
-            localStorage.setItem('ictJournal_v8', JSON.stringify(tradesData));
-        }
-
         let pnlChartInstance = null;
 
         function saveAccountsState() {
-            localStorage.setItem('ictAccounts_v3', JSON.stringify(accounts));
-            localStorage.setItem('ictActiveAccount_v3', activeAccountId);
             if (currentUser) saveCloudTrades(tradesData);
         }
 
@@ -979,7 +961,6 @@
             if (accounts.length <= 1) { alert("You must have at least one account."); return; }
             if (confirm("Delete this account and all its trades?")) {
                 tradesData = tradesData.filter(t => t.accountId !== activeAccountId);
-                saveCloudTrades(tradesData);
                 accounts = accounts.filter(a => a.id !== activeAccountId);
                 activeAccountId = accounts[0].id;
                 saveAccountsState();
@@ -999,16 +980,18 @@
             populateAccountDropdown();
             const activeAcc = accounts.find(a => a.id === activeAccountId) || accounts[0];
 
-            document.getElementById('accStartBal').value = activeAcc.startBal;
-            document.getElementById('accTargetBal').value = activeAcc.targetBal;
-            document.getElementById('accDrawdownBal').value = activeAcc.trailingLimit || 2000;
+            if(activeAcc) {
+                document.getElementById('accStartBal').value = activeAcc.startBal;
+                document.getElementById('accTargetBal').value = activeAcc.targetBal;
+                document.getElementById('accDrawdownBal').value = activeAcc.trailingLimit || 2000;
+            }
 
             const filteredTrades = tradesData.filter(t => t.accountId === activeAccountId);
             filteredTrades.sort((a, b) => new Date(a.Date + 'T' + a.Time) - new Date(b.Date + 'T' + b.Time));
 
             let totalPnl = 0, wins = 0;
             let chartData = [0], chartLabels = ["Start"];
-            let peakBal = activeAcc.startBal;
+            let peakBal = activeAcc ? activeAcc.startBal : 0;
             
             const tbody = document.getElementById('historyTableBody');
             tbody.innerHTML = '';
@@ -1065,10 +1048,10 @@
             netEl.innerText = (totalPnl >= 0 ? "+$" : "-$") + Math.abs(totalPnl).toLocaleString();
             netEl.className = totalPnl >= 0 ? "value green" : "value red";
 
-            const currentBalance = activeAcc.startBal + totalPnl;
+            const currentBalance = activeAcc ? (activeAcc.startBal + totalPnl) : 0;
             const balanceEl = document.getElementById('accountBalance');
             balanceEl.innerText = "$" + currentBalance.toLocaleString();
-            balanceEl.className = currentBalance < activeAcc.startBal ? "value red" : "value green";
+            balanceEl.className = currentBalance < (activeAcc ? activeAcc.startBal : 0) ? "value red" : "value green";
 
             const wPnlEl = document.getElementById('weeklyPnl');
             wPnlEl.innerText = (weeklyPnl >= 0 ? "+$" : "-$") + Math.abs(weeklyPnl).toLocaleString();
@@ -1078,25 +1061,25 @@
             mPnlEl.innerText = (monthlyPnl >= 0 ? "+$" : "-$") + Math.abs(monthlyPnl).toLocaleString();
             mPnlEl.className = monthlyPnl >= 0 ? "val green" : "val red";
 
-            const neededProfit = activeAcc.targetBal - activeAcc.startBal;
+            const neededProfit = activeAcc ? (activeAcc.targetBal - activeAcc.startBal) : 1;
             let evalProg = neededProfit > 0 ? (totalPnl / neededProfit) * 100 : 100;
             if(evalProg > 100) evalProg = 100; if(evalProg < 0) evalProg = 0;
             
             document.getElementById('progressBar').style.width = evalProg + "%";
             
-            if (currentBalance >= activeAcc.targetBal && activeAcc.targetBal > activeAcc.startBal) {
+            if (activeAcc && currentBalance >= activeAcc.targetBal && activeAcc.targetBal > activeAcc.startBal) {
                 document.getElementById('progressText').innerText = "TARGET REACHED!";
                 document.getElementById('evalTitle').innerText = "PASSED";
                 document.getElementById('evalTitle').classList.add('balance-reached');
                 document.getElementById('progressBar').style.backgroundColor = "var(--accent-gold)";
             } else {
-                document.getElementById('progressText').innerText = "$" + currentBalance.toLocaleString() + " / $" + activeAcc.targetBal.toLocaleString();
+                document.getElementById('progressText').innerText = "$" + currentBalance.toLocaleString() + " / $" + (activeAcc ? activeAcc.targetBal.toLocaleString() : 0);
                 document.getElementById('evalTitle').innerText = "Eval Progress";
                 document.getElementById('evalTitle').classList.remove('balance-reached');
                 document.getElementById('progressBar').style.backgroundColor = "var(--accent-green)";
             }
 
-            const trailingLimit = activeAcc.trailingLimit || 2000;
+            const trailingLimit = activeAcc ? (activeAcc.trailingLimit || 2000) : 2000;
             const liquidationPoint = peakBal - trailingLimit;
             let bufferLeft = currentBalance - liquidationPoint;
             if (bufferLeft < 0) bufferLeft = 0;
