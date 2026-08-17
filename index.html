@@ -546,10 +546,10 @@
 
     <script>
         // ==========================================
-        // 1. FIREBASE CONFIGURATION 
+        // 1. FIREBASE CONFIGURATION (ACTIVE KEYS)
         // ==========================================
         const firebaseConfig = {
-            apiKey: "AIzaSyCAsxgIw7j68IYY9K8aWmzHQzKquWJw-4s",
+            apiKey: "AIzaSyB9T-8fgSGbQJNVuWPEk1ZkIvf5nLyAivE",
             authDomain: "journal-6f593.firebaseapp.com",
             projectId: "journal-6f593",
             storageBucket: "journal-6f593.firebasestorage.app",
@@ -1155,7 +1155,6 @@
                     const pnl = dailyPnlMap[dateKey];
                     if (pnl > 0) cell.classList.add('green');
                     else if (pnl < 0) cell.classList.add('red');
-                    
                     cell.innerHTML = `${d}<br><span style="font-size:0.55rem; font-weight:800; margin-top:2px;">${pnl > 0 ? '+$' : '-$'}${Math.abs(pnl).toLocaleString()}</span>`;
                 } else {
                     cell.innerText = d;
@@ -1238,7 +1237,6 @@
             
             document.querySelectorAll('.preflight-check').forEach(cb => cb.checked = false);
             calculateGrade();
-            
             renderDashboard();
         }
 
