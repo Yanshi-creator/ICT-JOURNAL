@@ -23,6 +23,7 @@
             --accent-gold: #eab308;
             --accent-green: #22c55e;
             --accent-red: #ef4444;
+            --accent-blue: #38bdf8;
             --border-color: #272730;
             --cell-empty: #1f1f26;
         }
@@ -127,10 +128,10 @@
         
         .analysis-container { background-color: var(--bg-panel); border-radius: 12px; border: 1px solid var(--border-color); padding: 15px; display: flex; flex-direction: column; gap: 10px; }
         .analysis-container h4 { font-size: 0.85rem; color: var(--accent-gold); margin-bottom: 0px;}
-        .analysis-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .analysis-box { background-color: var(--bg-input); padding: 10px; border-radius: 8px; text-align: center; }
-        .analysis-box label { font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;}
-        .analysis-box .val { font-size: 1.1rem; font-weight: 800; margin-top: 4px;}
+        .analysis-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+        .analysis-box { background-color: var(--bg-input); padding: 8px; border-radius: 8px; text-align: center; }
+        .analysis-box label { font-size: 0.62rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;}
+        .analysis-box .val { font-size: 1rem; font-weight: 800; margin-top: 3px;}
 
         /* AI Output Box */
         .ai-output-box { background-color: rgba(234, 179, 8, 0.05); border-left: 3px solid var(--accent-gold); padding: 12px 14px; font-size: 0.78rem; color: var(--text-main); line-height: 1.6; border-radius: 0 6px 6px 0; max-height: 220px; overflow-y: auto;}
@@ -276,7 +277,7 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label>Partials (Price x Qty)</label>
-                        <input type="text" id="tPartials" placeholder="e.g. 19850 (2), 19865 (1)">
+                        <input type="text" id="tPartials" placeholder="e.g. 19850 (2), 19865 (3)">
                     </div>
                     <div class="form-group">
                         <label>Profit/Loss ($)</label>
@@ -358,7 +359,7 @@
                 <button class="log-btn" onclick="savePreMarketData()">Save Pre-Market Prep</button>
             </div>
 
-            <!-- CUSTOM GROUNDING FOOTER -->
+            <!-- BRANDING FOOTER -->
             <div class="brand-footer">
                 <div class="custom-quote">"It's not a game of getting rich quick so remember the number of times you have lost your accounts chasing that"</div>
                 <span class="quote-author">- Yanshi Madhavani</span>
@@ -368,7 +369,7 @@
         <!-- RIGHT PANEL -->
         <div class="right-panel">
             
-            <!-- CURRENT ACTIVE ACCOUNT CONFIG STRIP -->
+            <!-- ACCOUNT CONFIG STRIP -->
             <div class="account-config-box">
                 <div class="form-group">
                     <label>Start Balance</label>
@@ -431,9 +432,9 @@
                     <div class="calendar-grid" id="calendarGrid"></div>
                 </div>
 
-                <!-- PERIODIC ANALYSIS -->
+                <!-- PERIODIC QUANT PERFORMANCE & AI -->
                 <div class="analysis-container">
-                    <h4>Performance & AI Insights</h4>
+                    <h4>Performance & Quant Metrics</h4>
                     <div class="analysis-stats">
                         <div class="analysis-box">
                             <label>This Week</label>
@@ -443,8 +444,16 @@
                             <label>This Month</label>
                             <div class="val" id="monthlyPnl">$0</div>
                         </div>
+                        <div class="analysis-box">
+                            <label>Profit Factor</label>
+                            <div class="val" id="profitFactorVal">0.00</div>
+                        </div>
+                        <div class="analysis-box">
+                            <label>EV / Trade</label>
+                            <div class="val" id="expectancyVal">$0</div>
+                        </div>
                     </div>
-                    <!-- LOCAL ALGORITHMIC AI INSIGHTS -->
+                    <!-- LOCAL QUANT & ALGORITHMIC AI INSIGHTS -->
                     <div class="ai-output-box" id="aiOutput">
                         Awaiting trade log for automated execution & psychological analysis.
                     </div>
@@ -463,7 +472,7 @@
                         <tr>
                             <th>Date / Time</th>
                             <th>Setup Execution</th>
-                            <th>RR</th>
+                            <th>Realized RR</th>
                             <th>Trailing Threshold</th>
                             <th>PNL</th>
                             <th>Action</th>
@@ -546,7 +555,7 @@
 
     <script>
         // ==========================================
-        // 1. FIREBASE CONFIGURATION (ACTIVE KEYS)
+        // 1. FIREBASE CONFIGURATION (ACTIVE)
         // ==========================================
         const firebaseConfig = {
             apiKey: "AIzaSyB9T-8fgSGbQJNVuWPEk1ZkIvf5nLyAivE",
@@ -558,7 +567,6 @@
             measurementId: "G-PRBFDQ3J8Z"
         };
 
-        // Initialize Firebase
         let auth = null;
         let db = null;
         let currentUser = null;
@@ -570,16 +578,14 @@
             db = firebase.firestore();
         }
 
-        // ==========================================
-        // LOCAL DATA STATE (CLEARED ON LOGOUT)
-        // ==========================================
+        // Isolated User State
         let tradesData = [];
         let accounts = [{ id: 'default_1', name: 'New Account', firm: 'Personal', type: 'Funded', startBal: 50000, targetBal: 53000, trailingLimit: 2000 }];
         let activeAccountId = accounts[0].id;
         let preMarketLogs = {};
 
         // ==========================================
-        // 2. AUTHENTICATION CONTROLLER
+        // 2. AUTHENTICATION & MULTI-USER ISOLATION
         // ==========================================
         function toggleAuthMode() {
             isAuthModeLogin = !isAuthModeLogin;
@@ -610,6 +616,12 @@
                 return;
             }
 
+            if (!auth) {
+                document.getElementById('authOverlay').style.display = "none";
+                document.getElementById('userEmailDisplay').innerText = email;
+                return;
+            }
+
             if (isAuthModeLogin) {
                 auth.signInWithEmailAndPassword(email, password)
                     .catch(err => {
@@ -628,7 +640,6 @@
         function signOutUser() {
             if (auth) {
                 auth.signOut().then(() => {
-                    // MEMORY WIPE: Clears dashboard so the next person sees nothing
                     tradesData = [];
                     accounts = [{ id: 'default_1', name: 'New Account', firm: 'Personal', type: 'Funded', startBal: 50000, targetBal: 53000, trailingLimit: 2000 }];
                     activeAccountId = accounts[0].id;
@@ -640,7 +651,6 @@
             }
         }
 
-        // Firebase Auth State Listener
         if (auth) {
             auth.onAuthStateChanged(user => {
                 if (user) {
@@ -656,26 +666,23 @@
         }
 
         // ==========================================
-        // 3. CLOUD SYNC STORAGE ENGINE
+        // 3. FIRESTORE CLOUD ENGINE
         // ==========================================
         function loadCloudUserData(uid) {
             if (!db) return;
             db.collection("users").doc(uid).get().then(doc => {
                 if (doc.exists) {
                     const data = doc.data();
-                    if (data.trades) tradesData = data.trades;
-                    else tradesData = [];
-
-                    if (data.accounts) accounts = data.accounts;
-                    if (data.settings) platformSettings = data.settings;
-                    if (data.preMarketLogs) preMarketLogs = data.preMarketLogs;
+                    tradesData = data.trades || [];
+                    accounts = data.accounts || [{ id: 'default_1', name: 'New Account', firm: 'Personal', type: 'Funded', startBal: 50000, targetBal: 53000, trailingLimit: 2000 }];
+                    platformSettings = data.settings || platformSettings;
+                    preMarketLogs = data.preMarketLogs || {};
                     
                     activeAccountId = accounts[0]?.id || 'default_1';
                     
                     applyPlatformBranding();
                     renderDashboard();
                 } else {
-                    // FRESH NEW USER SETUP
                     tradesData = [];
                     accounts = [{ id: 'default_1', name: 'New Account', firm: 'Personal', type: 'Funded', startBal: 50000, targetBal: 53000, trailingLimit: 2000 }];
                     activeAccountId = accounts[0].id;
@@ -754,6 +761,7 @@
             };
             if (currentUser) saveCloudTrades(tradesData);
             alert("Pre-Market Prep saved for " + date);
+            renderDashboard();
         }
 
         function loadPreMarketData() {
@@ -857,6 +865,7 @@
             if (currentUser) saveCloudTrades(tradesData);
         }
 
+        // Quantitative Realized RR Calculation Engine
         function calcRR() {
             const ent = parseFloat(entryInput.value), stp = parseFloat(stopInput.value), ext = parseFloat(exitInput.value);
             const contracts = parseFloat(contractsInput.value) || 1;
@@ -990,6 +999,7 @@
             filteredTrades.sort((a, b) => new Date(a.Date + 'T' + a.Time) - new Date(b.Date + 'T' + b.Time));
 
             let totalPnl = 0, wins = 0;
+            let grossProfits = 0, grossLosses = 0;
             let chartData = [0], chartLabels = ["Start"];
             let peakBal = activeAcc ? activeAcc.startBal : 0;
             
@@ -1006,7 +1016,12 @@
 
             filteredTrades.forEach((trade, index) => {
                 totalPnl += trade.PNL;
-                if(trade.PNL > 0) wins++;
+                if(trade.PNL > 0) {
+                    wins++;
+                    grossProfits += trade.PNL;
+                } else if(trade.PNL < 0) {
+                    grossLosses += Math.abs(trade.PNL);
+                }
                 
                 chartData.push(totalPnl);
                 chartLabels.push("T" + (index + 1));
@@ -1041,8 +1056,16 @@
                 tbody.insertBefore(tr, tbody.firstChild);
             });
 
+            // Quant Performance Calculations
+            const winRateNum = filteredTrades.length ? (wins / filteredTrades.length) : 0;
+            const lossRateNum = filteredTrades.length ? ((filteredTrades.length - wins) / filteredTrades.length) : 0;
+            const avgWin = wins > 0 ? (grossProfits / wins) : 0;
+            const avgLoss = (filteredTrades.length - wins) > 0 ? (grossLosses / (filteredTrades.length - wins)) : 0;
+            const expectancy = (winRateNum * avgWin) - (lossRateNum * avgLoss);
+            const profitFactor = grossLosses > 0 ? (grossProfits / grossLosses).toFixed(2) : (grossProfits > 0 ? "MAX" : "0.00");
+
             document.getElementById('totalTrades').innerText = filteredTrades.length;
-            document.getElementById('winRate').innerText = filteredTrades.length ? ((wins / filteredTrades.length) * 100).toFixed(0) + "%" : "0%";
+            document.getElementById('winRate').innerText = (winRateNum * 100).toFixed(0) + "%";
             
             const netEl = document.getElementById('netPnl');
             netEl.innerText = (totalPnl >= 0 ? "+$" : "-$") + Math.abs(totalPnl).toLocaleString();
@@ -1060,6 +1083,13 @@
             const mPnlEl = document.getElementById('monthlyPnl');
             mPnlEl.innerText = (monthlyPnl >= 0 ? "+$" : "-$") + Math.abs(monthlyPnl).toLocaleString();
             mPnlEl.className = monthlyPnl >= 0 ? "val green" : "val red";
+
+            document.getElementById('profitFactorVal').innerText = profitFactor;
+            document.getElementById('profitFactorVal').className = parseFloat(profitFactor) >= 1.5 || profitFactor === "MAX" ? "val green" : "val";
+            
+            const evEl = document.getElementById('expectancyVal');
+            evEl.innerText = (expectancy >= 0 ? "+$" : "-$") + Math.abs(Math.round(expectancy)).toLocaleString();
+            evEl.className = expectancy >= 0 ? "val green" : "val red";
 
             const neededProfit = activeAcc ? (activeAcc.targetBal - activeAcc.startBal) : 1;
             let evalProg = neededProfit > 0 ? (totalPnl / neededProfit) * 100 : 100;
@@ -1099,7 +1129,7 @@
 
             renderChart(chartLabels, chartData, totalPnl);
             renderCalendar(dailyPnlMap);
-            generateDeepAIFeedback(filteredTrades, activeAcc);
+            generateDeepAIFeedback(filteredTrades, activeAcc, { expectancy, profitFactor, avgWin, avgLoss });
         }
 
         function renderCalendar(dailyPnlMap) {
@@ -1198,6 +1228,7 @@
                 ChecklistScore: `${checksDone}/${checksTotal}`,
                 Grade: activeGrade,
                 Entry: entryInput.value, StopLoss: stopInput.value, Exit: exitInput.value,
+                Partials: partialsInput.value || "",
                 SLHandles: document.getElementById('tSLHandles').value || "0",
                 TPHandles: document.getElementById('tTPHandles').value || "0",
                 RR: currentRR,
@@ -1251,40 +1282,54 @@
             XLSX.writeFile(wb, "Yanshi_Trading_Logs.xlsx");
         }
 
-        // DEEP NLP & PATTERN-RECOGNITION AI COACH
-        function generateDeepAIFeedback(filteredTrades, activeAcc) {
+        // DEEP QUANTITATIVE & PRE-MARKET AI COACH
+        function generateDeepAIFeedback(filteredTrades, activeAcc, quant) {
             const aiBox = document.getElementById('aiOutput');
             if (filteredTrades.length === 0) {
                 aiBox.innerHTML = "Awaiting trade log for automated execution & psychological analysis.";
                 return;
             }
 
+            let fb = `<strong>Algorithmic AI & Quant Insights:</strong><br>`;
+
+            // 1. Single Trade Immediate Diagnosis
             if (filteredTrades.length === 1) {
                 const t = filteredTrades[0];
-                let singleFb = `<strong>Trade #1 Diagnosis:</strong><br>`;
-                singleFb += `• Alignment: Setup rated <strong>[${t.Grade}]</strong> (${t.Setups}). `;
+                fb += `• Alignment: Setup rated <strong>[${t.Grade}]</strong> (${t.Setups}). `;
                 if (t.Grade.includes("A")) {
-                    singleFb += `Strong pre-flight discipline followed.<br>`;
+                    fb += `High-probability pre-flight structure followed.<br>`;
                 } else {
-                    singleFb += `<span style="color:var(--accent-red)">Warning:</span> Entered below standard A-grade rules.<br>`;
+                    fb += `<span style="color:var(--accent-red)">Warning:</span> Sub-optimal entry grade logged.<br>`;
                 }
 
-                if (t.PNL < 0 && (t.EmotionBefore === "FOMO / Rushed" || t.EmotionBefore === "Anxious")) {
-                    singleFb += `• Psychology Check: Entry was taken under '${t.EmotionBefore}', directly contributing to the loss.<br>`;
-                } else if (t.PNL >= 0) {
-                    singleFb += `• Execution realized ${t.RR}R in the ${t.Killzone}. Protect this buffer.<br>`;
+                // Check Pre-market prep on trade date
+                const dayPrep = preMarketLogs[t.Date];
+                if (dayPrep) {
+                    const biasMatch = (dayPrep.bias === "Bullish" && t.Direction === "Long") || (dayPrep.bias === "Bearish" && t.Direction === "Short");
+                    if (biasMatch) {
+                        fb += `• Pre-Market Sync: <span style="color:var(--accent-green)">Discipline Confirmed</span>. Executed ${t.Direction} aligned with your logged ${dayPrep.bias} daily bias.<br>`;
+                    } else if (dayPrep.bias !== "Consolidation / Neutral") {
+                        fb += `• Pre-Market Sync: <span style="color:var(--accent-red)">Counter-Bias Entry</span>. You executed ${t.Direction} against your planned ${dayPrep.bias} bias.<br>`;
+                    }
+                }
+
+                if (t.RR && parseFloat(t.RR) > 0) {
+                    fb += `• Realized Execution: Captured ${t.RR}R with $${t.PNL} net return.<br>`;
                 }
 
                 if (t.Improvement && t.Improvement.trim() !== "") {
-                    singleFb += `• Reflection Note Logged: "${t.Improvement.trim()}". Keep this front-of-mind before tomorrow's open.`;
+                    fb += `• Self-Reflection Note: "${t.Improvement.trim()}". Keep this front-of-mind before tomorrow's open.`;
                 }
-                aiBox.innerHTML = singleFb;
+                aiBox.innerHTML = fb;
                 return;
             }
 
+            // 2. Multi-Trade Quant Math Analysis
             let aGradeWins = 0, aGradeTotal = 0;
             let emotionLosses = 0;
-            let totalPnl = 0;
+            let alignedBiasTrades = 0, alignedBiasWins = 0;
+            let counterBiasTrades = 0, counterBiasWins = 0;
+            let sumRealizedRR = 0;
             let sessionPnl = { "London Open": 0, "NY AM Session": 0, "NY PM Session": 0, "Macro": 0 };
             
             let mistakeKeywords = {
@@ -1297,12 +1342,12 @@
             let foundMistakes = {};
 
             filteredTrades.forEach(t => { 
-                totalPnl += t.PNL;
-                
                 if(t.Grade === "A+" || t.Grade === "A") {
                     aGradeTotal++;
                     if(t.PNL > 0) aGradeWins++;
                 }
+
+                if(t.RR && !isNaN(parseFloat(t.RR))) sumRealizedRR += parseFloat(t.RR);
 
                 if(t.EmotionBefore && (t.EmotionBefore.includes("FOMO") || t.EmotionBefore.includes("Anxious"))) {
                     if(t.PNL < 0) emotionLosses++; 
@@ -1312,6 +1357,20 @@
                     sessionPnl[t.Killzone] += t.PNL;
                 }
 
+                // Check Pre-Market Bias Correlation
+                const dayPrep = preMarketLogs[t.Date];
+                if (dayPrep && dayPrep.bias && dayPrep.bias !== "Consolidation / Neutral") {
+                    const isAligned = (dayPrep.bias === "Bullish" && t.Direction === "Long") || (dayPrep.bias === "Bearish" && t.Direction === "Short");
+                    if (isAligned) {
+                        alignedBiasTrades++;
+                        if(t.PNL > 0) alignedBiasWins++;
+                    } else {
+                        counterBiasTrades++;
+                        if(t.PNL > 0) counterBiasWins++;
+                    }
+                }
+
+                // Scan NLP reflections text
                 if (t.Improvement) {
                     const text = t.Improvement.toLowerCase();
                     for (const [category, words] of Object.entries(mistakeKeywords)) {
@@ -1325,30 +1384,45 @@
                 }
             });
 
-            let feedbackStr = `<strong>Algorithmic Execution Analysis:</strong><br>`;
+            // Mathematical Edge & Expectancy
+            const avgR = (sumRealizedRR / filteredTrades.length).toFixed(2);
+            fb += `• Statistical Edge: Expectancy sits at <strong>${quant.expectancy >= 0 ? '+$' : '-$'}${Math.abs(Math.round(quant.expectancy))}</strong> per trade with an Avg Realized R of <strong>${avgR}R</strong> (Profit Factor: <strong>${quant.profitFactor}</strong>).<br>`;
+
+            // Pre-Market Correlation Stats
+            if (alignedBiasTrades > 0 || counterBiasTrades > 0) {
+                const alignedWR = alignedBiasTrades > 0 ? ((alignedBiasWins / alignedBiasTrades) * 100).toFixed(0) : 0;
+                fb += `• Pre-Market Discipline: Trades aligned with daily bias hold a <strong>${alignedWR}% Win Rate</strong> (${alignedBiasWins}/${alignedBiasTrades}). `;
+                if (counterBiasTrades > 0) {
+                    const counterWR = ((counterBiasWins / counterBiasTrades) * 100).toFixed(0);
+                    fb += `Counter-bias executions hold a <span style="color:var(--accent-red)">${counterWR}% Win Rate</span> (${counterBiasWins}/${counterBiasTrades}).<br>`;
+                } else {
+                    fb += `<br>`;
+                }
+            }
 
             if (aGradeTotal > 0) {
                 let aWinRate = ((aGradeWins / aGradeTotal) * 100).toFixed(0);
-                feedbackStr += `• Pre-Flight Alignment: A/A+ setups show a <strong>${aWinRate}% Win Rate</strong> across ${aGradeTotal} executions.<br>`;
+                fb += `• Pre-Flight Alignment: A/A+ setups show a <strong>${aWinRate}% Win Rate</strong> across ${aGradeTotal} executions.<br>`;
             }
 
+            // Recurring Habit Warnings
             let topMistake = Object.keys(foundMistakes).reduce((a, b) => foundMistakes[a] > foundMistakes[b] ? a : b, null);
             if (topMistake && foundMistakes[topMistake] >= 1) {
-                feedbackStr += `• <span style="color:var(--accent-red)">Recurring Habit Flagged:</span> You've self-noted <em>'${topMistake}'</em> across ${foundMistakes[topMistake]} trade reflection(s). Focus on eliminating this specific pattern.<br>`;
+                fb += `• <span style="color:var(--accent-red)">Recurring Habit Flagged:</span> You've self-noted <em>'${topMistake}'</em> across ${foundMistakes[topMistake]} trade reflection(s). Focus on eliminating this specific pattern.<br>`;
             }
 
             if (emotionLosses > 0) {
-                feedbackStr += `• Pre-Trade Psychology: Sub-optimal emotions (FOMO/Anxiety) directly account for ${emotionLosses} loss(es).<br>`;
+                fb += `• Psychology Penalty: FOMO/Anxious entries directly account for ${emotionLosses} loss(es).<br>`;
             }
 
             let bestSession = Object.keys(sessionPnl).reduce((a, b) => sessionPnl[a] > sessionPnl[b] ? a : b);
             let worstSession = Object.keys(sessionPnl).reduce((a, b) => sessionPnl[a] < sessionPnl[b] ? a : b);
 
             if (sessionPnl[bestSession] > 0 && sessionPnl[worstSession] < 0) {
-                feedbackStr += `• Session Edge: ${bestSession} is your highest-yield session (+$${sessionPnl[bestSession].toLocaleString()}), while ${worstSession} is in drawdown (-$${Math.abs(sessionPnl[worstSession]).toLocaleString()}).`;
+                fb += `• Session Yield: ${bestSession} is your highest-yield session (+$${sessionPnl[bestSession].toLocaleString()}), while ${worstSession} is in drawdown (-$${Math.abs(sessionPnl[worstSession]).toLocaleString()}).`;
             }
 
-            aiBox.innerHTML = feedbackStr;
+            aiBox.innerHTML = fb;
         }
 
         // Init App
