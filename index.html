@@ -312,7 +312,7 @@
                 <div class="form-row" style="margin-bottom:0;">
                     <div class="form-group">
                         <label>What Could Have Been Done Better?</label>
-                        <textarea id="tImprovement" placeholder="Review execution, psychology, or discipline mistakes..."></textarea>
+                        <textarea id="tImprovement" placeholder="Review execution against your daily plan..."></textarea>
                     </div>
                 </div>
 
@@ -865,46 +865,57 @@
             if (currentUser) saveCloudTrades(tradesData);
         }
 
-        // Quantitative Realized RR Calculation Engine
+        // ==========================================
+        // 4. TRUE PARTIAL-WEIGHTED RR ENGINE
+        // ==========================================
         function calcRR() {
             const ent = parseFloat(entryInput.value), stp = parseFloat(stopInput.value), ext = parseFloat(exitInput.value);
             const contracts = parseFloat(contractsInput.value) || 1;
             const direction = directionInput.value;
             const partialsStr = partialsInput.value;
 
-            if (!isNaN(ent) && !isNaN(stp) && (!isNaN(ext) || partialsStr.trim() !== "")) {
-                const risk = Math.abs(ent - stp);
-                if (risk === 0) { rrOutput.value = ""; currentRR = 0; return; }
+            if (!isNaN(ent) && !isNaN(stp)) {
+                const riskPerContract = Math.abs(ent - stp);
+                if (riskPerContract === 0) { rrOutput.value = ""; currentRR = 0; return; }
 
-                let totalContracts = contracts;
-                let weightedExitSum = 0;
-                let partialsQtyCount = 0;
+                const isLong = direction === "Long";
+                let totalRealizedReward = 0;
+                let closedQty = 0;
 
                 const partialRegex = /([\d.]+)\s*(?:x|\*|@|\()?s*([\d.]+)\s*\)?/gi;
                 let match;
                 while ((match = partialRegex.exec(partialsStr)) !== null) {
-                    const pPrice = parseFloat(match[1]), pQty = parseFloat(match[2]);
-                    if (!isNaN(pPrice) && !isNaN(pQty)) { weightedExitSum += (pPrice * pQty); partialsQtyCount += pQty; }
+                    const pPrice = parseFloat(match[1]);
+                    const pQty = parseFloat(match[2]);
+                    if (!isNaN(pPrice) && !isNaN(pQty)) {
+                        const reward = isLong ? (pPrice - ent) : (ent - pPrice);
+                        totalRealizedReward += (reward * pQty);
+                        closedQty += pQty;
+                    }
                 }
 
-                if (partialsQtyCount > totalContracts) totalContracts = partialsQtyCount; 
-                const remainingContracts = totalContracts - partialsQtyCount;
-                let finalAvgExit = ext; 
+                if (!isNaN(ext)) {
+                    let remainingQty = contracts - closedQty;
+                    if (remainingQty < 0) remainingQty = 0; 
+                    if (closedQty === 0) remainingQty = contracts; 
 
-                if (partialsQtyCount > 0) {
-                    if (!isNaN(ext) && remainingContracts > 0) {
-                        weightedExitSum += (ext * remainingContracts);
-                        finalAvgExit = weightedExitSum / totalContracts;
-                    } else if (remainingContracts <= 0 || isNaN(ext)) {
-                        finalAvgExit = weightedExitSum / partialsQtyCount;
+                    if (remainingQty > 0) {
+                        const reward = isLong ? (ext - ent) : (ent - ext);
+                        totalRealizedReward += (reward * remainingQty);
+                        closedQty += remainingQty;
                     }
-                } else if (isNaN(ext)) { rrOutput.value = ""; currentRR = 0; return; }
+                }
 
-                const isLong = direction === "Long";
-                const reward = isLong ? (finalAvgExit - ent) : (ent - finalAvgExit);
-                currentRR = (reward / risk).toFixed(2);
+                if (closedQty === 0) { rrOutput.value = ""; currentRR = 0; return; }
+
+                const effectiveTotalContracts = Math.max(contracts, closedQty);
+                const totalRisk = riskPerContract * effectiveTotalContracts;
+                
+                currentRR = (totalRealizedReward / totalRisk).toFixed(2);
                 rrOutput.value = currentRR + " R";
-            } else { rrOutput.value = ""; currentRR = 0; }
+            } else { 
+                rrOutput.value = ""; currentRR = 0; 
+            }
         }
 
         entryInput.addEventListener('input', calcRR); stopInput.addEventListener('input', calcRR); 
@@ -1274,15 +1285,38 @@
             renderDashboard();
         }
 
+        // ==========================================
+        // 5. ENHANCED EXCEL EXPORT (MULTI-SHEET)
+        // ==========================================
         function exportToExcel() {
-            if (tradesData.length === 0) { alert("No logs available."); return; }
-            const ws = XLSX.utils.json_to_sheet(tradesData);
+            const filteredTrades = tradesData.filter(t => t.accountId === activeAccountId);
+            if (filteredTrades.length === 0 && Object.keys(preMarketLogs).length === 0) { 
+                alert("No logs available to export."); 
+                return; 
+            }
+            
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Logs");
+
+            if (filteredTrades.length > 0) {
+                const wsTrades = XLSX.utils.json_to_sheet(filteredTrades);
+                XLSX.utils.book_append_sheet(wb, wsTrades, "Trade Logs");
+            }
+            
+            const prepArray = Object.keys(preMarketLogs).map(date => {
+                return { Date: date, ...preMarketLogs[date] };
+            });
+            
+            if (prepArray.length > 0) {
+                const wsPrep = XLSX.utils.json_to_sheet(prepArray);
+                XLSX.utils.book_append_sheet(wb, wsPrep, "Pre-Market Logs");
+            }
+
             XLSX.writeFile(wb, "Yanshi_Trading_Logs.xlsx");
         }
 
-        // DEEP QUANTITATIVE & PRE-MARKET AI COACH
+        // ==========================================
+        // 6. DEEP NLP & PRE-MARKET AI COACH
+        // ==========================================
         function generateDeepAIFeedback(filteredTrades, activeAcc, quant) {
             const aiBox = document.getElementById('aiOutput');
             if (filteredTrades.length === 0) {
@@ -1292,7 +1326,6 @@
 
             let fb = `<strong>Algorithmic AI & Quant Insights:</strong><br>`;
 
-            // 1. Single Trade Immediate Diagnosis
             if (filteredTrades.length === 1) {
                 const t = filteredTrades[0];
                 fb += `• Alignment: Setup rated <strong>[${t.Grade}]</strong> (${t.Setups}). `;
@@ -1302,7 +1335,6 @@
                     fb += `<span style="color:var(--accent-red)">Warning:</span> Sub-optimal entry grade logged.<br>`;
                 }
 
-                // Check Pre-market prep on trade date
                 const dayPrep = preMarketLogs[t.Date];
                 if (dayPrep) {
                     const biasMatch = (dayPrep.bias === "Bullish" && t.Direction === "Long") || (dayPrep.bias === "Bearish" && t.Direction === "Short");
@@ -1324,7 +1356,6 @@
                 return;
             }
 
-            // 2. Multi-Trade Quant Math Analysis
             let aGradeWins = 0, aGradeTotal = 0;
             let emotionLosses = 0;
             let alignedBiasTrades = 0, alignedBiasWins = 0;
@@ -1336,7 +1367,7 @@
                 "chasing / fomo": ["chase", "chased", "fomo", "rush", "rushed", "impatient", "patience"],
                 "early exit / cutting winners": ["early", "cut", "fear", "scared", "panicked", "tp", "target"],
                 "moving / widening stops": ["stop", "sl", "moved stop", "widened", "risk"],
-                "lack of HTF context": ["htf", "pd array", "context", "bias", "draw", "dol", "higher timeframe"],
+                "lack of HTF context": ["htf", "pd array", "context", "bias", "draw", "dol", "higher timeframe", "plan"],
                 "over-sizing": ["size", "contract", "contracts", "lots", "heavy"]
             };
             let foundMistakes = {};
@@ -1357,7 +1388,6 @@
                     sessionPnl[t.Killzone] += t.PNL;
                 }
 
-                // Check Pre-Market Bias Correlation
                 const dayPrep = preMarketLogs[t.Date];
                 if (dayPrep && dayPrep.bias && dayPrep.bias !== "Consolidation / Neutral") {
                     const isAligned = (dayPrep.bias === "Bullish" && t.Direction === "Long") || (dayPrep.bias === "Bearish" && t.Direction === "Short");
@@ -1370,7 +1400,6 @@
                     }
                 }
 
-                // Scan NLP reflections text
                 if (t.Improvement) {
                     const text = t.Improvement.toLowerCase();
                     for (const [category, words] of Object.entries(mistakeKeywords)) {
@@ -1384,11 +1413,9 @@
                 }
             });
 
-            // Mathematical Edge & Expectancy
             const avgR = (sumRealizedRR / filteredTrades.length).toFixed(2);
             fb += `• Statistical Edge: Expectancy sits at <strong>${quant.expectancy >= 0 ? '+$' : '-$'}${Math.abs(Math.round(quant.expectancy))}</strong> per trade with an Avg Realized R of <strong>${avgR}R</strong> (Profit Factor: <strong>${quant.profitFactor}</strong>).<br>`;
 
-            // Pre-Market Correlation Stats
             if (alignedBiasTrades > 0 || counterBiasTrades > 0) {
                 const alignedWR = alignedBiasTrades > 0 ? ((alignedBiasWins / alignedBiasTrades) * 100).toFixed(0) : 0;
                 fb += `• Pre-Market Discipline: Trades aligned with daily bias hold a <strong>${alignedWR}% Win Rate</strong> (${alignedBiasWins}/${alignedBiasTrades}). `;
@@ -1405,21 +1432,13 @@
                 fb += `• Pre-Flight Alignment: A/A+ setups show a <strong>${aWinRate}% Win Rate</strong> across ${aGradeTotal} executions.<br>`;
             }
 
-            // Recurring Habit Warnings
             let topMistake = Object.keys(foundMistakes).reduce((a, b) => foundMistakes[a] > foundMistakes[b] ? a : b, null);
             if (topMistake && foundMistakes[topMistake] >= 1) {
-                fb += `• <span style="color:var(--accent-red)">Recurring Habit Flagged:</span> You've self-noted <em>'${topMistake}'</em> across ${foundMistakes[topMistake]} trade reflection(s). Focus on eliminating this specific pattern.<br>`;
+                fb += `• <span style="color:var(--accent-red)">Post-Market Habit Flagged:</span> You've self-noted <em>'${topMistake}'</em> across ${foundMistakes[topMistake]} trade reflection(s). Focus on eliminating this specific pattern to protect EV.<br>`;
             }
 
             if (emotionLosses > 0) {
                 fb += `• Psychology Penalty: FOMO/Anxious entries directly account for ${emotionLosses} loss(es).<br>`;
-            }
-
-            let bestSession = Object.keys(sessionPnl).reduce((a, b) => sessionPnl[a] > sessionPnl[b] ? a : b);
-            let worstSession = Object.keys(sessionPnl).reduce((a, b) => sessionPnl[a] < sessionPnl[b] ? a : b);
-
-            if (sessionPnl[bestSession] > 0 && sessionPnl[worstSession] < 0) {
-                fb += `• Session Yield: ${bestSession} is your highest-yield session (+$${sessionPnl[bestSession].toLocaleString()}), while ${worstSession} is in drawdown (-$${Math.abs(sessionPnl[worstSession]).toLocaleString()}).`;
             }
 
             aiBox.innerHTML = fb;
