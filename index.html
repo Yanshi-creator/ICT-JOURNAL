@@ -23,7 +23,6 @@
             --accent-gold: #eab308;
             --accent-green: #22c55e;
             --accent-red: #ef4444;
-            --accent-blue: #38bdf8;
             --border-color: #272730;
             --cell-empty: #1f1f26;
         }
@@ -32,27 +31,20 @@
         body { background-color: var(--bg-main); color: var(--text-main); padding: 25px 35px; }
 
         /* Auth Screen Overlay */
-        .auth-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #0a0a0c; display: flex; justify-content: center; align-items: center; z-index: 9999;
-        }
-        .auth-card {
-            background-color: var(--bg-panel); border: 1px solid var(--border-color);
-            padding: 35px 30px; border-radius: 12px; width: 380px; display: flex; flex-direction: column; gap: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        }
+        .auth-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0a0a0c; display: flex; justify-content: center; align-items: center; z-index: 9999; }
+        .auth-card { background-color: var(--bg-panel); border: 1px solid var(--border-color); padding: 35px 30px; border-radius: 12px; width: 90%; max-width: 380px; display: flex; flex-direction: column; gap: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         .auth-card h2 { color: var(--accent-gold); font-size: 1.4rem; text-align: center; font-weight: 800; letter-spacing: 1px;}
         .auth-card p { font-size: 0.8rem; color: var(--text-muted); text-align: center; margin-top: -8px; }
         .auth-toggle { font-size: 0.75rem; color: var(--accent-gold); text-align: center; cursor: pointer; text-decoration: underline; margin-top: 5px; }
         .auth-error { font-size: 0.75rem; color: var(--accent-red); text-align: center; display: none; }
 
         /* Header */
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 15px; }
         .header h4 { font-size: 0.8rem; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 5px; font-weight: 700; color: var(--text-muted); }
         .header h4 a { color: var(--accent-gold); text-decoration: none; transition: opacity 0.2s; }
         .header h4 a:hover { opacity: 0.8; }
         .header h1 { font-size: 1.8rem; letter-spacing: 1px; font-weight: 800; }
-        .header-actions { display: flex; gap: 10px; align-items: center; }
+        .header-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 
         /* Buttons & Inputs */
         .user-tag { font-size: 0.75rem; color: var(--text-muted); background: var(--bg-panel); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); }
@@ -62,7 +54,7 @@
         .export-btn { background-color: var(--accent-gold); color: #000; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 700; cursor: pointer; transition: opacity 0.2s; }
         .export-btn:hover { opacity: 0.9; }
 
-        /* Layout */
+        /* Layout Grid */
         .dashboard { display: grid; grid-template-columns: 440px 1fr; gap: 25px; }
         .log-panel { background-color: var(--bg-panel); padding: 25px; border-radius: 12px; border: 1px solid var(--border-color); display: flex; flex-direction: column; height: fit-content; }
         
@@ -80,6 +72,11 @@
         input[type="date"]::-webkit-calendar-picker-indicator, input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); }
         textarea { resize: vertical; min-height: 40px; }
 
+        /* Chart Paste Area */
+        .image-paste-area { border: 2px dashed var(--border-color); background: var(--bg-input); padding: 18px; text-align: center; color: var(--text-muted); border-radius: 6px; cursor: pointer; font-size: 0.75rem; transition: all 0.2s; outline: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;}
+        .image-paste-area:focus { border-color: var(--accent-gold); color: var(--accent-gold); background: rgba(234, 179, 8, 0.05); }
+        .image-preview { max-width: 100%; max-height: 120px; border-radius: 4px; display: none; object-fit: contain; }
+
         /* Checklist */
         .checklist-container { background-color: var(--bg-input); border: 1px solid var(--border-color); border-radius: 6px; padding: 12px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 10px; }
         .checklist-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 6px; margin-bottom: 4px; }
@@ -92,14 +89,9 @@
         .log-btn { background-color: var(--accent-gold); color: #000; border: none; padding: 12px; border-radius: 6px; font-weight: 800; cursor: pointer; margin-top: 10px; transition: opacity 0.2s; font-size: 0.95rem; }
         .log-btn:hover { opacity: 0.9; }
 
-        /* Branding Footer */
-        .brand-footer { margin-top: 25px; text-align: center; border-top: 1px solid var(--border-color); padding-top: 15px; }
-        .custom-quote { font-size: 0.75rem; color: var(--text-muted); font-style: italic; line-height: 1.4; }
-        .quote-author { display: block; margin-top: 6px; font-size: 0.7rem; color: var(--accent-gold); font-weight: 700; }
-
         /* Right Panel */
         .right-panel { display: flex; flex-direction: column; gap: 20px; }
-        .account-config-box { display: flex; gap: 12px; background-color: var(--bg-panel); padding: 15px; border-radius: 12px; border: 1px solid var(--border-color); align-items: flex-end; }
+        .account-config-box { display: flex; gap: 12px; background-color: var(--bg-panel); padding: 15px; border-radius: 12px; border: 1px solid var(--border-color); align-items: flex-end; flex-wrap: wrap; }
         .stats-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
         .stat-card { background-color: var(--bg-panel); padding: 14px 10px; border-radius: 12px; border: 1px solid var(--border-color); text-align: center; }
         .stat-card h4 { color: var(--text-muted); font-size: 0.65rem; text-transform: uppercase; margin-bottom: 6px; font-weight: 700;}
@@ -133,27 +125,44 @@
         .analysis-box label { font-size: 0.62rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;}
         .analysis-box .val { font-size: 1rem; font-weight: 800; margin-top: 3px;}
 
-        /* AI Output Box */
         .ai-output-box { background-color: rgba(234, 179, 8, 0.05); border-left: 3px solid var(--accent-gold); padding: 12px 14px; font-size: 0.78rem; color: var(--text-main); line-height: 1.6; border-radius: 0 6px 6px 0; max-height: 220px; overflow-y: auto;}
 
         .chart-container { background-color: var(--bg-panel); border-radius: 12px; border: 1px solid var(--border-color); padding: 15px; height: 220px; }
         .table-container { background-color: var(--bg-panel); border-radius: 12px; border: 1px solid var(--border-color); padding: 15px; overflow-x: auto; max-height: 250px; overflow-y: auto;}
         table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
-        th { text-align: left; color: var(--text-muted); padding-bottom: 10px; border-bottom: 1px solid var(--border-color); font-weight: 700; }
+        th { text-align: left; color: var(--text-muted); padding-bottom: 10px; border-bottom: 1px solid var(--border-color); font-weight: 700; white-space: nowrap; }
         td { padding: 10px 0; border-bottom: 1px solid rgba(39, 39, 48, 0.5); font-weight: 500;}
         .text-green { color: var(--accent-green); font-weight: 700;}
         .text-red { color: var(--accent-red); font-weight: 700;}
-        .delete-btn { background-color: transparent; color: var(--accent-red); border: 1px solid var(--accent-red); padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.7rem; font-weight: 600;}
-        .delete-btn:hover { background-color: var(--accent-red); color: #fff; }
+        .action-btns { display: flex; gap: 6px; }
+        .btn-small { background-color: transparent; border: 1px solid var(--border-color); color: var(--text-muted); padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.7rem; font-weight: 600; transition: all 0.2s; }
+        .btn-small:hover { border-color: var(--accent-gold); color: var(--accent-gold); }
+        .btn-small.delete:hover { border-color: var(--accent-red); color: var(--accent-red); background-color: rgba(239, 68, 68, 0.1); }
 
         /* Modals */
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 1000; }
-        .modal { background-color: var(--bg-panel); border: 1px solid var(--border-color); padding: 25px; border-radius: 12px; width: 450px; display: flex; flex-direction: column; gap: 15px; max-height: 90vh; overflow-y: auto; }
-        .modal h3 { border-bottom: 1px solid var(--border-color); padding-bottom: 10px; color: var(--text-main); }
-        .settings-rule-list { display: flex; flex-direction: column; gap: 8px; margin-top: 5px; }
-        .settings-rule-item { display: flex; gap: 8px; }
-        .settings-rule-item input { flex: 1; }
-        .remove-rule-btn { background-color: var(--accent-red); color: white; border: none; border-radius: 4px; padding: 0 10px; cursor: pointer; font-weight:bold; }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 1000; padding: 20px;}
+        .modal { background-color: var(--bg-panel); border: 1px solid var(--border-color); padding: 25px; border-radius: 12px; width: 100%; max-width: 450px; display: flex; flex-direction: column; gap: 15px; max-height: 90vh; overflow-y: auto; }
+        .modal.image-modal { max-width: 90vw; padding: 15px; }
+        .modal h3 { border-bottom: 1px solid var(--border-color); padding-bottom: 10px; color: var(--text-main); display: flex; justify-content: space-between; align-items: center;}
+        .modal h3 button { background: transparent; border: none; color: var(--text-muted); font-size: 1.2rem; cursor: pointer; transition: color 0.2s; }
+        .modal h3 button:hover { color: var(--accent-red); }
+        .img-modal-content { max-width: 100%; max-height: 75vh; border-radius: 8px; object-fit: contain; }
+
+        /* MOBILE RESPONSIVE MEDIA QUERIES */
+        @media (max-width: 1100px) {
+            .dashboard { grid-template-columns: 1fr; }
+            .mid-section { grid-template-columns: 1fr; }
+            .stats-grid { grid-template-columns: repeat(3, 1fr); }
+            .log-panel { order: 2; } /* Moves logging below dashboard on mobile */
+            .right-panel { order: 1; }
+        }
+        @media (max-width: 650px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .analysis-stats { grid-template-columns: repeat(2, 1fr); }
+            .form-row { flex-direction: column; gap: 0; }
+            .header-actions { flex-direction: column; align-items: stretch; width: 100%; }
+            .account-config-box { flex-direction: column; align-items: stretch; }
+        }
     </style>
 </head>
 <body>
@@ -174,6 +183,14 @@
             <span class="auth-error" id="authErrorMsg">Error message here</span>
             <button class="log-btn" id="authSubmitBtn" onclick="handleAuthSubmit()">Sign In</button>
             <div class="auth-toggle" id="authToggleBtn" onclick="toggleAuthMode()">Need an account? Register here</div>
+        </div>
+    </div>
+
+    <!-- FULLSCREEN IMAGE MODAL -->
+    <div class="modal-overlay" id="imageModal" onclick="closeImageModal()">
+        <div class="modal image-modal" onclick="event.stopPropagation()">
+            <h3>Trade Screenshot <button onclick="closeImageModal()">✖</button></h3>
+            <img id="fullSizeChart" class="img-modal-content" src="">
         </div>
     </div>
 
@@ -291,12 +308,11 @@
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label>SL Target (Handles)</label>
-                        <input type="number" id="tSLHandles" step="any" placeholder="e.g. 15">
-                    </div>
-                    <div class="form-group">
-                        <label>TP Target (Handles)</label>
-                        <input type="number" id="tTPHandles" step="any" placeholder="e.g. 45">
+                        <label>Chart Screenshot</label>
+                        <div class="image-paste-area" id="pasteArea" tabindex="0">
+                            <span>📸 Click here and press Ctrl+V / Cmd+V to paste your chart</span>
+                        </div>
+                        <img id="chartPreview" class="image-preview" src="">
                     </div>
                 </div>
 
@@ -359,7 +375,6 @@
                 <button class="log-btn" onclick="savePreMarketData()">Save Pre-Market Prep</button>
             </div>
 
-            <!-- BRANDING FOOTER -->
             <div class="brand-footer">
                 <div class="custom-quote">"It's not a game of getting rich quick so remember the number of times you have lost your accounts chasing that"</div>
                 <span class="quote-author">- Yanshi Madhavani</span>
@@ -384,7 +399,7 @@
                     <input type="number" id="accDrawdownBal" onchange="updateActiveAccountSettings()" placeholder="e.g. 2000">
                 </div>
                 <div class="form-group" style="flex:0.5;">
-                    <button class="delete-btn" style="padding:10px; margin-top:2px;" onclick="deleteActiveAccount()">Delete</button>
+                    <button class="delete-btn btn-secondary" style="padding:10px; margin-top:2px; border-color:var(--accent-red); color:var(--accent-red);" onclick="deleteActiveAccount()">Delete</button>
                 </div>
             </div>
 
@@ -475,7 +490,7 @@
                             <th>Realized RR</th>
                             <th>Trailing Threshold</th>
                             <th>PNL</th>
-                            <th>Action</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody id="historyTableBody"></tbody>
@@ -487,7 +502,7 @@
     <!-- NEW ACCOUNT MODAL -->
     <div class="modal-overlay" id="addAccountModal">
         <div class="modal">
-            <h3>Add New Account</h3>
+            <h3>Add New Account <button onclick="closeAddAccountModal()">✖</button></h3>
             <div class="form-group">
                 <label>Account Name / Label</label>
                 <input type="text" id="mAccName" placeholder="e.g. Topstep XFA 1">
@@ -497,13 +512,7 @@
                 <label>Firm Name</label>
                 <input type="text" id="mAccFirm" list="firmSuggestions" placeholder="e.g. Alpha, Apex, Personal...">
                 <datalist id="firmSuggestions">
-                    <option value="Alpha">
-                    <option value="Apex">
-                    <option value="Topstep">
-                    <option value="Lucid">
-                    <option value="MyFundedFX">
-                    <option value="TradeDay">
-                    <option value="Personal Broker">
+                    <option value="Alpha"><option value="Apex"><option value="Topstep"><option value="Lucid"><option value="MyFundedFX"><option value="TradeDay"><option value="Personal Broker">
                 </datalist>
             </div>
 
@@ -531,7 +540,6 @@
             </div>
             <div style="display:flex; gap:10px; margin-top:10px;">
                 <button class="log-btn" style="flex:1;" onclick="createNewAccount()">Create Account</button>
-                <button class="btn-secondary" style="flex:1;" onclick="closeAddAccountModal()">Cancel</button>
             </div>
         </div>
     </div>
@@ -539,16 +547,14 @@
     <!-- RULES SETTINGS MODAL -->
     <div class="modal-overlay" id="settingsModal">
         <div class="modal">
-            <h3>Checklist Rules</h3>
+            <h3>Checklist Rules <button onclick="closeSettingsModal()">✖</button></h3>
             <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:10px;">Customize your Pre-Flight alignment rules. This dictates your setup grading.</p>
             <div class="form-group">
                 <div class="settings-rule-list" id="settingsChecklist"></div>
                 <button class="btn-secondary" style="margin-top:8px; padding:6px; font-size:0.75rem;" onclick="addRuleToSettings()">+ Add Rule</button>
             </div>
-
             <div style="display:flex; gap:10px; margin-top:10px;">
                 <button class="log-btn" style="flex:1;" onclick="savePlatformSettings()">Save Rules</button>
-                <button class="btn-secondary" style="flex:1;" onclick="closeSettingsModal()">Cancel</button>
             </div>
         </div>
     </div>
@@ -585,7 +591,66 @@
         let preMarketLogs = {};
 
         // ==========================================
-        // 2. AUTHENTICATION & MULTI-USER ISOLATION
+        // 2. IMAGE COMPRESSION ENGINE
+        // ==========================================
+        let currentChartBase64 = "";
+
+        document.getElementById('pasteArea').addEventListener('paste', function(e) {
+            e.preventDefault();
+            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+            for (let index in items) {
+                const item = items[index];
+                if (item.kind === 'file') {
+                    const blob = item.getAsFile();
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        const img = new Image();
+                        img.onload = function() {
+                            // Compress the image down so it doesn't overload Firestore's 1MB limit
+                            const canvas = document.createElement('canvas');
+                            const MAX_WIDTH = 700;
+                            let width = img.width;
+                            let height = img.height;
+
+                            if (width > MAX_WIDTH) {
+                                height = Math.round((height * MAX_WIDTH) / width);
+                                width = MAX_WIDTH;
+                            }
+                            canvas.width = width;
+                            canvas.height = height;
+                            
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0, width, height);
+                            
+                            // Compress as 50% Quality JPEG
+                            currentChartBase64 = canvas.toDataURL('image/jpeg', 0.5); 
+                            
+                            const preview = document.getElementById('chartPreview');
+                            preview.src = currentChartBase64;
+                            preview.style.display = 'block';
+                            document.getElementById('pasteArea').innerHTML = "<span style='color:var(--accent-green)'>✅ Image Attached!</span><br>Paste again to replace";
+                        }
+                        img.src = event.target.result;
+                    };
+                    reader.readAsDataURL(blob);
+                }
+            }
+        });
+
+        function openImageModal(tradeId) {
+            const trade = tradesData.find(t => t.id.toString() === tradeId.toString());
+            if(trade && trade.ChartImage) {
+                document.getElementById('fullSizeChart').src = trade.ChartImage;
+                document.getElementById('imageModal').style.display = 'flex';
+            }
+        }
+
+        function closeImageModal() {
+            document.getElementById('imageModal').style.display = 'none';
+        }
+
+        // ==========================================
+        // 3. AUTHENTICATION & SYNC
         // ==========================================
         function toggleAuthMode() {
             isAuthModeLogin = !isAuthModeLogin;
@@ -665,9 +730,6 @@
             });
         }
 
-        // ==========================================
-        // 3. FIRESTORE CLOUD ENGINE
-        // ==========================================
         function loadCloudUserData(uid) {
             if (!db) return;
             db.collection("users").doc(uid).get().then(doc => {
@@ -679,7 +741,6 @@
                     preMarketLogs = data.preMarketLogs || {};
                     
                     activeAccountId = accounts[0]?.id || 'default_1';
-                    
                     applyPlatformBranding();
                     renderDashboard();
                 } else {
@@ -705,7 +766,9 @@
             }
         }
 
-        // Initialize Form Dates
+        // ==========================================
+        // 4. UI LOGIC & R:R ENGINE
+        // ==========================================
         document.getElementById('tDate').valueAsDate = new Date();
         document.getElementById('pmDate').valueAsDate = new Date();
 
@@ -719,13 +782,8 @@
 
         function changeMonth(dir) {
             displayedCalMonth += dir;
-            if (displayedCalMonth < 0) {
-                displayedCalMonth = 11;
-                displayedCalYear--;
-            } else if (displayedCalMonth > 11) {
-                displayedCalMonth = 0;
-                displayedCalYear++;
-            }
+            if (displayedCalMonth < 0) { displayedCalMonth = 11; displayedCalYear--; } 
+            else if (displayedCalMonth > 11) { displayedCalMonth = 0; displayedCalYear++; }
             renderDashboard(); 
         }
 
@@ -736,15 +794,11 @@
             const viewPrep = document.getElementById('viewPreMarket');
 
             if (tab === 'log') {
-                btnLog.classList.add('active');
-                btnPrep.classList.remove('active');
-                viewLog.style.display = 'block';
-                viewPrep.style.display = 'none';
+                btnLog.classList.add('active'); btnPrep.classList.remove('active');
+                viewLog.style.display = 'block'; viewPrep.style.display = 'none';
             } else {
-                btnPrep.classList.add('active');
-                btnLog.classList.remove('active');
-                viewPrep.style.display = 'block';
-                viewLog.style.display = 'none';
+                btnPrep.classList.add('active'); btnLog.classList.remove('active');
+                viewPrep.style.display = 'block'; viewLog.style.display = 'none';
                 loadPreMarketData();
             }
         }
@@ -808,13 +862,7 @@
             const total = document.querySelectorAll('.preflight-check').length;
             const checked = document.querySelectorAll('.preflight-check:checked').length;
             const display = document.getElementById('autoGradeDisplay');
-            
-            if (total === 0) {
-                activeGrade = "N/A";
-                display.innerText = "";
-                return;
-            }
-
+            if (total === 0) { activeGrade = "N/A"; display.innerText = ""; return; }
             const percentage = checked / total;
             if (percentage === 1) activeGrade = "A+";
             else if (percentage >= 0.85) activeGrade = "A";
@@ -822,15 +870,10 @@
             else if (percentage >= 0.55) activeGrade = "B";
             else if (percentage >= 0.40) activeGrade = "C+";
             else activeGrade = "C";
-            
             display.innerText = `[${activeGrade}]`;
         }
 
-        function openSettingsModal() {
-            renderSettingsChecklist();
-            document.getElementById('settingsModal').style.display = 'flex';
-        }
-
+        function openSettingsModal() { renderSettingsChecklist(); document.getElementById('settingsModal').style.display = 'flex'; }
         function closeSettingsModal() { document.getElementById('settingsModal').style.display = 'none'; }
 
         function renderSettingsChecklist() {
@@ -839,23 +882,13 @@
             platformSettings.checklist.forEach((rule, index) => {
                 const div = document.createElement('div');
                 div.className = 'settings-rule-item';
-                div.innerHTML = `
-                    <input type="text" class="rule-input" value="${rule}">
-                    <button class="remove-rule-btn" onclick="removeRule(${index})">X</button>
-                `;
+                div.innerHTML = `<input type="text" class="rule-input" value="${rule}"><button class="remove-rule-btn" onclick="removeRule(${index})">X</button>`;
                 container.appendChild(div);
             });
         }
 
-        function addRuleToSettings() {
-            platformSettings.checklist.push("New Rule");
-            renderSettingsChecklist();
-        }
-
-        function removeRule(index) {
-            platformSettings.checklist.splice(index, 1);
-            renderSettingsChecklist();
-        }
+        function addRuleToSettings() { platformSettings.checklist.push("New Rule"); renderSettingsChecklist(); }
+        function removeRule(index) { platformSettings.checklist.splice(index, 1); renderSettingsChecklist(); }
 
         function savePlatformSettings() {
             const inputs = document.querySelectorAll('.rule-input');
@@ -865,9 +898,7 @@
             if (currentUser) saveCloudTrades(tradesData);
         }
 
-        // ==========================================
-        // 4. TRUE PARTIAL-WEIGHTED RR ENGINE
-        // ==========================================
+        // True Partial-Weighted R:R Engine
         function calcRR() {
             const ent = parseFloat(entryInput.value), stp = parseFloat(stopInput.value), ext = parseFloat(exitInput.value);
             const contracts = parseFloat(contractsInput.value) || 1;
@@ -924,17 +955,14 @@
 
         let pnlChartInstance = null;
 
-        function saveAccountsState() {
-            if (currentUser) saveCloudTrades(tradesData);
-        }
+        function saveAccountsState() { if (currentUser) saveCloudTrades(tradesData); }
 
         function populateAccountDropdown() {
             const select = document.getElementById('accountSelect');
             select.innerHTML = '';
             accounts.forEach(acc => {
                 const opt = document.createElement('option');
-                opt.value = acc.id;
-                opt.innerText = `${acc.name}`;
+                opt.value = acc.id; opt.innerText = `${acc.name}`;
                 if (acc.id === activeAccountId) opt.selected = true;
                 select.appendChild(opt);
             });
@@ -969,12 +997,8 @@
             const trailingLimit = parseFloat(document.getElementById('mAccDrawdown').value) || 2000;
 
             const newAcc = { id: 'acc_' + Date.now(), name, firm, type, startBal, targetBal, trailingLimit };
-            accounts.push(newAcc);
-            activeAccountId = newAcc.id;
-            saveAccountsState();
-            populateAccountDropdown();
-            closeAddAccountModal();
-            renderDashboard();
+            accounts.push(newAcc); activeAccountId = newAcc.id;
+            saveAccountsState(); populateAccountDropdown(); closeAddAccountModal(); renderDashboard();
         }
 
         function deleteActiveAccount() {
@@ -983,9 +1007,7 @@
                 tradesData = tradesData.filter(t => t.accountId !== activeAccountId);
                 accounts = accounts.filter(a => a.id !== activeAccountId);
                 activeAccountId = accounts[0].id;
-                saveAccountsState();
-                populateAccountDropdown();
-                renderDashboard();
+                saveAccountsState(); populateAccountDropdown(); renderDashboard();
             }
         }
 
@@ -1022,17 +1044,12 @@
             const currentWeek = getWeekNumber(now);
             const currentMonth = now.getMonth();
             const currentYear = now.getFullYear();
-
             const dailyPnlMap = {};
 
             filteredTrades.forEach((trade, index) => {
                 totalPnl += trade.PNL;
-                if(trade.PNL > 0) {
-                    wins++;
-                    grossProfits += trade.PNL;
-                } else if(trade.PNL < 0) {
-                    grossLosses += Math.abs(trade.PNL);
-                }
+                if(trade.PNL > 0) { wins++; grossProfits += trade.PNL; } 
+                else if(trade.PNL < 0) { grossLosses += Math.abs(trade.PNL); }
                 
                 chartData.push(totalPnl);
                 chartLabels.push("T" + (index + 1));
@@ -1050,24 +1067,23 @@
 
                 const tradeGrade = trade.Grade || 'N/A';
                 const setupString = trade.Setups || `${trade.ChecklistScore || "?"} Rules Met`;
-                const killzoneStr = trade.Killzone || 'N/A';
                 
                 const directionStr = trade.Direction ? `<span style="color:var(--text-main); font-weight:800; font-size:0.75rem;">[${trade.Direction.toUpperCase()}]</span> ` : '';
-                const handlesStr = (trade.SLHandles || trade.TPHandles) ? `<br><span style="font-size:0.65rem; color:var(--text-muted)">SL: ${trade.SLHandles||0} | TP: ${trade.TPHandles||0}</span>` : '';
+                
+                const imgBtnHtml = trade.ChartImage ? `<button class="btn-small" onclick="openImageModal('${trade.id}')">📷 Chart</button>` : '';
 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td>${trade.Date} <br> <span style="font-size:0.65rem; color:var(--text-muted)">${killzoneStr}</span></td>
+                    <td>${trade.Date} <br> <span style="font-size:0.65rem; color:var(--text-muted)">${trade.Killzone || 'N/A'}</span></td>
                     <td>${directionStr}<span style="color:var(--accent-gold); font-weight:700;">[${tradeGrade}]</span> ${setupString}</td>
-                    <td>${trade.RR} R ${handlesStr}</td>
+                    <td>${trade.RR} R</td>
                     <td style="color:var(--text-muted)">Min: $${currentTrailingThreshold.toLocaleString()}</td>
                     <td class="${trade.PNL >= 0 ? 'text-green' : 'text-red'}">${trade.PNL >= 0 ? '+$' : '-$'}${Math.abs(trade.PNL).toLocaleString()}</td>
-                    <td><button class="delete-btn" onclick="deleteTrade(${trade.id})">Del</button></td>
+                    <td class="action-btns">${imgBtnHtml} <button class="btn-small delete" onclick="deleteTrade(${trade.id})">Del</button></td>
                 `;
                 tbody.insertBefore(tr, tbody.firstChild);
             });
 
-            // Quant Performance Calculations
             const winRateNum = filteredTrades.length ? (wins / filteredTrades.length) : 0;
             const lossRateNum = filteredTrades.length ? ((filteredTrades.length - wins) / filteredTrades.length) : 0;
             const avgWin = wins > 0 ? (grossProfits / wins) : 0;
@@ -1087,13 +1103,8 @@
             balanceEl.innerText = "$" + currentBalance.toLocaleString();
             balanceEl.className = currentBalance < (activeAcc ? activeAcc.startBal : 0) ? "value red" : "value green";
 
-            const wPnlEl = document.getElementById('weeklyPnl');
-            wPnlEl.innerText = (weeklyPnl >= 0 ? "+$" : "-$") + Math.abs(weeklyPnl).toLocaleString();
-            wPnlEl.className = weeklyPnl >= 0 ? "val green" : "val red";
-
-            const mPnlEl = document.getElementById('monthlyPnl');
-            mPnlEl.innerText = (monthlyPnl >= 0 ? "+$" : "-$") + Math.abs(monthlyPnl).toLocaleString();
-            mPnlEl.className = monthlyPnl >= 0 ? "val green" : "val red";
+            document.getElementById('weeklyPnl').innerText = (weeklyPnl >= 0 ? "+$" : "-$") + Math.abs(weeklyPnl).toLocaleString();
+            document.getElementById('monthlyPnl').innerText = (monthlyPnl >= 0 ? "+$" : "-$") + Math.abs(monthlyPnl).toLocaleString();
 
             document.getElementById('profitFactorVal').innerText = profitFactor;
             document.getElementById('profitFactorVal').className = parseFloat(profitFactor) >= 1.5 || profitFactor === "MAX" ? "val green" : "val";
@@ -1111,12 +1122,10 @@
             if (activeAcc && currentBalance >= activeAcc.targetBal && activeAcc.targetBal > activeAcc.startBal) {
                 document.getElementById('progressText').innerText = "TARGET REACHED!";
                 document.getElementById('evalTitle').innerText = "PASSED";
-                document.getElementById('evalTitle').classList.add('balance-reached');
                 document.getElementById('progressBar').style.backgroundColor = "var(--accent-gold)";
             } else {
                 document.getElementById('progressText').innerText = "$" + currentBalance.toLocaleString() + " / $" + (activeAcc ? activeAcc.targetBal.toLocaleString() : 0);
                 document.getElementById('evalTitle').innerText = "Eval Progress";
-                document.getElementById('evalTitle').classList.remove('balance-reached');
                 document.getElementById('progressBar').style.backgroundColor = "var(--accent-green)";
             }
 
@@ -1128,15 +1137,8 @@
             let ddProg = (bufferLeft / trailingLimit) * 100;
             if (ddProg > 100) ddProg = 100;
 
-            const ddBar = document.getElementById('ddProgressBar');
-            ddBar.style.width = ddProg + "%";
-            
-            if (bufferLeft === 0) {
-                document.getElementById('ddProgressText').innerText = "ACCOUNT BLOWN";
-                ddBar.style.width = "100%";
-            } else {
-                document.getElementById('ddProgressText').innerText = "$" + bufferLeft.toLocaleString() + " Buffer Remaining";
-            }
+            document.getElementById('ddProgressBar').style.width = ddProg + "%";
+            document.getElementById('ddProgressText').innerText = bufferLeft === 0 ? "ACCOUNT BLOWN" : "$" + bufferLeft.toLocaleString() + " Buffer Remaining";
 
             renderChart(chartLabels, chartData, totalPnl);
             renderCalendar(dailyPnlMap);
@@ -1149,36 +1151,26 @@
             
             const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
             days.forEach(d => {
-                const el = document.createElement('div');
-                el.className = 'day-label'; el.innerText = d;
-                grid.appendChild(el);
+                const el = document.createElement('div'); el.className = 'day-label'; el.innerText = d; grid.appendChild(el);
             });
 
-            const year = displayedCalYear;
-            const month = displayedCalMonth;
+            const year = displayedCalYear; const month = displayedCalMonth;
             const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
             document.getElementById('calMonthDisplay').innerText = monthNames[month] + " " + year;
 
             const firstDay = new Date(year, month, 1).getDay();
             const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-            for(let i=0; i<firstDay; i++) {
-                const empty = document.createElement('div');
-                grid.appendChild(empty);
-            }
+            for(let i=0; i<firstDay; i++) { grid.appendChild(document.createElement('div')); }
 
             for(let d=1; d<=daysInMonth; d++) {
                 const cell = document.createElement('div');
                 cell.className = 'cal-cell';
-                
-                const mStr = String(month + 1).padStart(2, '0');
-                const dStr = String(d).padStart(2, '0');
-                const dateKey = `${year}-${mStr}-${dStr}`;
+                const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 
                 if (dailyPnlMap[dateKey]) {
                     const pnl = dailyPnlMap[dateKey];
-                    if (pnl > 0) cell.classList.add('green');
-                    else if (pnl < 0) cell.classList.add('red');
+                    if (pnl > 0) cell.classList.add('green'); else if (pnl < 0) cell.classList.add('red');
                     cell.innerHTML = `${d}<br><span style="font-size:0.55rem; font-weight:800; margin-top:2px;">${pnl > 0 ? '+$' : '-$'}${Math.abs(pnl).toLocaleString()}</span>`;
                 } else {
                     cell.innerText = d;
@@ -1190,28 +1182,10 @@
         function renderChart(labels, data, totalPnl) {
             const ctx = document.getElementById('pnlChart').getContext('2d');
             if(pnlChartInstance) pnlChartInstance.destroy();
-            
             pnlChartInstance = new Chart(ctx, {
                 type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Net PNL',
-                        data: data,
-                        borderColor: totalPnl >= 0 ? '#22c55e' : '#ef4444',
-                        backgroundColor: totalPnl >= 0 ? 'rgba(34, 197, 94, 0.05)' : 'rgba(239, 68, 68, 0.05)',
-                        borderWidth: 2, fill: true, tension: 0.2
-                    }]
-                },
-                options: { 
-                    responsive: true, 
-                    maintainAspectRatio: false, 
-                    plugins: { legend: { display: false } }, 
-                    scales: { 
-                        x: { display: false }, 
-                        y: { grid: { color: '#272730' }, ticks: { color: '#8b8b99' } } 
-                    } 
-                }
+                data: { labels: labels, datasets: [{ label: 'Net PNL', data: data, borderColor: totalPnl >= 0 ? '#22c55e' : '#ef4444', backgroundColor: totalPnl >= 0 ? 'rgba(34, 197, 94, 0.05)' : 'rgba(239, 68, 68, 0.05)', borderWidth: 2, fill: true, tension: 0.2 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { grid: { color: '#272730' }, ticks: { color: '#8b8b99' } } } }
             });
         }
 
@@ -1244,7 +1218,8 @@
                 TPHandles: document.getElementById('tTPHandles').value || "0",
                 RR: currentRR,
                 PNL: pnlValue,
-                Improvement: document.getElementById('tImprovement').value
+                Improvement: document.getElementById('tImprovement').value,
+                ChartImage: currentChartBase64
             };
 
             tradesData.push(newTrade);
@@ -1252,14 +1227,17 @@
             
             if(dateVal) {
                 const parts = dateVal.split('-');
-                displayedCalYear = parseInt(parts[0]);
-                displayedCalMonth = parseInt(parts[1]) - 1;
+                displayedCalYear = parseInt(parts[0]); displayedCalMonth = parseInt(parts[1]) - 1;
             }
 
             document.getElementById('pnl').value = ""; document.getElementById('tImprovement').value = "";
             document.getElementById('tPartials').value = ""; entryInput.value = ""; stopInput.value = ""; 
             exitInput.value = ""; rrOutput.value = ""; document.getElementById('tSLHandles').value = ""; document.getElementById('tTPHandles').value = "";
             
+            currentChartBase64 = "";
+            document.getElementById('chartPreview').style.display = 'none';
+            document.getElementById('pasteArea').innerHTML = "<span>📸 Click here and press Ctrl+V / Cmd+V to paste your chart</span>";
+
             document.querySelectorAll('.preflight-check').forEach(cb => cb.checked = false);
             calculateGrade();
             renderDashboard();
@@ -1271,12 +1249,9 @@
             
             const t = filteredTrades[filteredTrades.length - 1]; 
             const pnlStr = t.PNL >= 0 ? `+$${t.PNL}` : `-$${Math.abs(t.PNL)}`;
-            
             const snipeText = `🎯 Snipe Executed\nAccount: ${accounts.find(a => a.id === activeAccountId).name}\nSession: ${t.Killzone}\nDirection: ${t.Direction || 'N/A'}\nTargets: ${t.SLHandles || 0} SL | ${t.TPHandles || 0} TP\nSetup: [${t.Grade}] ${t.Setups}\nRealized RR: ${t.RR}R\nPNL: ${pnlStr}`;
             
-            navigator.clipboard.writeText(snipeText).then(() => {
-                alert("Snipe details copied to clipboard!");
-            });
+            navigator.clipboard.writeText(snipeText).then(() => { alert("Snipe details copied to clipboard!"); });
         }
 
         function deleteTrade(id) {
@@ -1285,27 +1260,20 @@
             renderDashboard();
         }
 
-        // ==========================================
-        // 5. ENHANCED EXCEL EXPORT (MULTI-SHEET)
-        // ==========================================
         function exportToExcel() {
             const filteredTrades = tradesData.filter(t => t.accountId === activeAccountId);
-            if (filteredTrades.length === 0 && Object.keys(preMarketLogs).length === 0) { 
-                alert("No logs available to export."); 
-                return; 
-            }
+            if (filteredTrades.length === 0 && Object.keys(preMarketLogs).length === 0) { alert("No logs available to export."); return; }
             
             const wb = XLSX.utils.book_new();
 
             if (filteredTrades.length > 0) {
-                const wsTrades = XLSX.utils.json_to_sheet(filteredTrades);
+                // Strip the base64 image strings so it doesn't break Excel
+                const safeTrades = filteredTrades.map(t => { const { ChartImage, ...safeT } = t; return safeT; });
+                const wsTrades = XLSX.utils.json_to_sheet(safeTrades);
                 XLSX.utils.book_append_sheet(wb, wsTrades, "Trade Logs");
             }
             
-            const prepArray = Object.keys(preMarketLogs).map(date => {
-                return { Date: date, ...preMarketLogs[date] };
-            });
-            
+            const prepArray = Object.keys(preMarketLogs).map(date => { return { Date: date, ...preMarketLogs[date] }; });
             if (prepArray.length > 0) {
                 const wsPrep = XLSX.utils.json_to_sheet(prepArray);
                 XLSX.utils.book_append_sheet(wb, wsPrep, "Pre-Market Logs");
@@ -1315,52 +1283,33 @@
         }
 
         // ==========================================
-        // 6. DEEP NLP & PRE-MARKET AI COACH
+        // 5. DEEP NLP & PRE-MARKET AI COACH
         // ==========================================
         function generateDeepAIFeedback(filteredTrades, activeAcc, quant) {
             const aiBox = document.getElementById('aiOutput');
-            if (filteredTrades.length === 0) {
-                aiBox.innerHTML = "Awaiting trade log for automated execution & psychological analysis.";
-                return;
-            }
+            if (filteredTrades.length === 0) { aiBox.innerHTML = "Awaiting trade log for automated execution & psychological analysis."; return; }
 
             let fb = `<strong>Algorithmic AI & Quant Insights:</strong><br>`;
 
             if (filteredTrades.length === 1) {
                 const t = filteredTrades[0];
                 fb += `• Alignment: Setup rated <strong>[${t.Grade}]</strong> (${t.Setups}). `;
-                if (t.Grade.includes("A")) {
-                    fb += `High-probability pre-flight structure followed.<br>`;
-                } else {
-                    fb += `<span style="color:var(--accent-red)">Warning:</span> Sub-optimal entry grade logged.<br>`;
-                }
+                fb += t.Grade.includes("A") ? `High-probability structure followed.<br>` : `<span style="color:var(--accent-red)">Warning:</span> Sub-optimal entry grade logged.<br>`;
 
                 const dayPrep = preMarketLogs[t.Date];
                 if (dayPrep) {
                     const biasMatch = (dayPrep.bias === "Bullish" && t.Direction === "Long") || (dayPrep.bias === "Bearish" && t.Direction === "Short");
-                    if (biasMatch) {
-                        fb += `• Pre-Market Sync: <span style="color:var(--accent-green)">Discipline Confirmed</span>. Executed ${t.Direction} aligned with your logged ${dayPrep.bias} daily bias.<br>`;
-                    } else if (dayPrep.bias !== "Consolidation / Neutral") {
-                        fb += `• Pre-Market Sync: <span style="color:var(--accent-red)">Counter-Bias Entry</span>. You executed ${t.Direction} against your planned ${dayPrep.bias} bias.<br>`;
-                    }
+                    if (biasMatch) fb += `• Pre-Market Sync: <span style="color:var(--accent-green)">Discipline Confirmed</span>. Aligned with ${dayPrep.bias} bias.<br>`;
+                    else if (dayPrep.bias !== "Consolidation / Neutral") fb += `• Pre-Market Sync: <span style="color:var(--accent-red)">Counter-Bias Entry</span>. Executed against planned ${dayPrep.bias} bias.<br>`;
                 }
 
-                if (t.RR && parseFloat(t.RR) > 0) {
-                    fb += `• Realized Execution: Captured ${t.RR}R with $${t.PNL} net return.<br>`;
-                }
-
-                if (t.Improvement && t.Improvement.trim() !== "") {
-                    fb += `• Self-Reflection Note: "${t.Improvement.trim()}". Keep this front-of-mind before tomorrow's open.`;
-                }
-                aiBox.innerHTML = fb;
-                return;
+                if (t.RR && parseFloat(t.RR) > 0) fb += `• Realized Execution: Captured ${t.RR}R with $${t.PNL} net return.<br>`;
+                if (t.Improvement && t.Improvement.trim() !== "") fb += `• Reflection: "${t.Improvement.trim()}".`;
+                aiBox.innerHTML = fb; return;
             }
 
-            let aGradeWins = 0, aGradeTotal = 0;
-            let emotionLosses = 0;
-            let alignedBiasTrades = 0, alignedBiasWins = 0;
-            let counterBiasTrades = 0, counterBiasWins = 0;
-            let sumRealizedRR = 0;
+            let aGradeWins = 0, aGradeTotal = 0, emotionLosses = 0;
+            let alignedBiasTrades = 0, alignedBiasWins = 0, counterBiasTrades = 0, counterBiasWins = 0, sumRealizedRR = 0;
             let sessionPnl = { "London Open": 0, "NY AM Session": 0, "NY PM Session": 0, "Macro": 0 };
             
             let mistakeKeywords = {
@@ -1373,78 +1322,56 @@
             let foundMistakes = {};
 
             filteredTrades.forEach(t => { 
-                if(t.Grade === "A+" || t.Grade === "A") {
-                    aGradeTotal++;
-                    if(t.PNL > 0) aGradeWins++;
-                }
-
+                if(t.Grade === "A+" || t.Grade === "A") { aGradeTotal++; if(t.PNL > 0) aGradeWins++; }
                 if(t.RR && !isNaN(parseFloat(t.RR))) sumRealizedRR += parseFloat(t.RR);
-
-                if(t.EmotionBefore && (t.EmotionBefore.includes("FOMO") || t.EmotionBefore.includes("Anxious"))) {
-                    if(t.PNL < 0) emotionLosses++; 
-                }
-
-                if(t.Killzone && sessionPnl[t.Killzone] !== undefined) {
-                    sessionPnl[t.Killzone] += t.PNL;
-                }
+                if(t.EmotionBefore && (t.EmotionBefore.includes("FOMO") || t.EmotionBefore.includes("Anxious")) && t.PNL < 0) emotionLosses++; 
+                if(t.Killzone && sessionPnl[t.Killzone] !== undefined) sessionPnl[t.Killzone] += t.PNL;
 
                 const dayPrep = preMarketLogs[t.Date];
                 if (dayPrep && dayPrep.bias && dayPrep.bias !== "Consolidation / Neutral") {
                     const isAligned = (dayPrep.bias === "Bullish" && t.Direction === "Long") || (dayPrep.bias === "Bearish" && t.Direction === "Short");
-                    if (isAligned) {
-                        alignedBiasTrades++;
-                        if(t.PNL > 0) alignedBiasWins++;
-                    } else {
-                        counterBiasTrades++;
-                        if(t.PNL > 0) counterBiasWins++;
-                    }
+                    if (isAligned) { alignedBiasTrades++; if(t.PNL > 0) alignedBiasWins++; } 
+                    else { counterBiasTrades++; if(t.PNL > 0) counterBiasWins++; }
                 }
 
                 if (t.Improvement) {
                     const text = t.Improvement.toLowerCase();
                     for (const [category, words] of Object.entries(mistakeKeywords)) {
                         for (const w of words) {
-                            if (text.includes(w)) {
-                                foundMistakes[category] = (foundMistakes[category] || 0) + 1;
-                                break;
-                            }
+                            if (text.includes(w)) { foundMistakes[category] = (foundMistakes[category] || 0) + 1; break; }
                         }
                     }
                 }
             });
 
             const avgR = (sumRealizedRR / filteredTrades.length).toFixed(2);
-            fb += `• Statistical Edge: Expectancy sits at <strong>${quant.expectancy >= 0 ? '+$' : '-$'}${Math.abs(Math.round(quant.expectancy))}</strong> per trade with an Avg Realized R of <strong>${avgR}R</strong> (Profit Factor: <strong>${quant.profitFactor}</strong>).<br>`;
+            fb += `• Statistical Edge: Expectancy is <strong>${quant.expectancy >= 0 ? '+$' : '-$'}${Math.abs(Math.round(quant.expectancy))}</strong>/trade. Avg Realized R: <strong>${avgR}R</strong>.<br>`;
 
             if (alignedBiasTrades > 0 || counterBiasTrades > 0) {
                 const alignedWR = alignedBiasTrades > 0 ? ((alignedBiasWins / alignedBiasTrades) * 100).toFixed(0) : 0;
-                fb += `• Pre-Market Discipline: Trades aligned with daily bias hold a <strong>${alignedWR}% Win Rate</strong> (${alignedBiasWins}/${alignedBiasTrades}). `;
+                fb += `• Pre-Market Discipline: Trades aligned with daily bias hold a <strong>${alignedWR}% Win Rate</strong>. `;
                 if (counterBiasTrades > 0) {
                     const counterWR = ((counterBiasWins / counterBiasTrades) * 100).toFixed(0);
-                    fb += `Counter-bias executions hold a <span style="color:var(--accent-red)">${counterWR}% Win Rate</span> (${counterBiasWins}/${counterBiasTrades}).<br>`;
-                } else {
-                    fb += `<br>`;
-                }
+                    fb += `Counter-bias executions hold a <span style="color:var(--accent-red)">${counterWR}% Win Rate</span>.<br>`;
+                } else fb += `<br>`;
             }
 
             if (aGradeTotal > 0) {
                 let aWinRate = ((aGradeWins / aGradeTotal) * 100).toFixed(0);
-                fb += `• Pre-Flight Alignment: A/A+ setups show a <strong>${aWinRate}% Win Rate</strong> across ${aGradeTotal} executions.<br>`;
+                fb += `• Alignment: A/A+ setups show a <strong>${aWinRate}% Win Rate</strong>.<br>`;
             }
 
             let topMistake = Object.keys(foundMistakes).reduce((a, b) => foundMistakes[a] > foundMistakes[b] ? a : b, null);
             if (topMistake && foundMistakes[topMistake] >= 1) {
-                fb += `• <span style="color:var(--accent-red)">Post-Market Habit Flagged:</span> You've self-noted <em>'${topMistake}'</em> across ${foundMistakes[topMistake]} trade reflection(s). Focus on eliminating this specific pattern to protect EV.<br>`;
+                fb += `• <span style="color:var(--accent-red)">Habit Flagged:</span> You've self-noted <em>'${topMistake}'</em> across ${foundMistakes[topMistake]} trade reflection(s).<br>`;
             }
 
-            if (emotionLosses > 0) {
-                fb += `• Psychology Penalty: FOMO/Anxious entries directly account for ${emotionLosses} loss(es).<br>`;
-            }
+            if (emotionLosses > 0) fb += `• Psychology Penalty: FOMO/Anxious entries account for ${emotionLosses} loss(es).<br>`;
 
             aiBox.innerHTML = fb;
         }
 
-        // Init App
+        // Init
         applyPlatformBranding();
         renderDashboard();
     </script>
