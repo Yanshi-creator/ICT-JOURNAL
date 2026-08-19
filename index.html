@@ -38,14 +38,13 @@
         .auth-toggle { font-size: 0.75rem; color: var(--accent-gold); text-align: center; cursor: pointer; text-decoration: underline; margin-top: 5px; }
         .auth-error { font-size: 0.75rem; color: var(--accent-red); text-align: center; display: none; }
 
-        /* Fullscreen Image Modal */
+        /* Modals (Settings & Details) */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 1000; padding: 20px;}
         .modal { background-color: var(--bg-panel); border: 1px solid var(--border-color); padding: 25px; border-radius: 12px; width: 100%; max-width: 450px; display: flex; flex-direction: column; gap: 15px; max-height: 90vh; overflow-y: auto; }
-        .modal.image-modal { max-width: 90vw; padding: 15px; }
+        .modal.details-modal { max-width: 700px; }
         .modal h3 { border-bottom: 1px solid var(--border-color); padding-bottom: 10px; color: var(--text-main); display: flex; justify-content: space-between; align-items: center;}
         .modal h3 button { background: transparent; border: none; color: var(--text-muted); font-size: 1.2rem; cursor: pointer; transition: color 0.2s; }
         .modal h3 button:hover { color: var(--accent-red); }
-        .img-modal-content { max-width: 100%; max-height: 75vh; border-radius: 8px; object-fit: contain; }
 
         /* Header */
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 15px; }
@@ -191,11 +190,13 @@
         </div>
     </div>
 
-    <!-- FULLSCREEN IMAGE MODAL -->
-    <div class="modal-overlay" id="imageModal" onclick="closeImageModal()">
-        <div class="modal image-modal" onclick="event.stopPropagation()">
-            <h3>Trade Screenshot <button onclick="closeImageModal()">✖</button></h3>
-            <img id="fullSizeChart" class="img-modal-content" src="">
+    <!-- TRADE DETAILS MODAL -->
+    <div class="modal-overlay" id="detailsModal" onclick="closeDetailsModal()">
+        <div class="modal details-modal" onclick="event.stopPropagation()">
+            <h3 id="dTitle">Trade Details <button onclick="closeDetailsModal()">✖</button></h3>
+            <div id="dContent" style="display: flex; flex-direction: column; gap: 15px;">
+                <!-- Populated dynamically -->
+            </div>
         </div>
     </div>
 
@@ -592,7 +593,7 @@
         let preMarketLogs = {};
 
         // ==========================================
-        // 2. IMAGE COMPRESSION ENGINE
+        // 2. IMAGE COMPRESSION ENGINE & DETAILS MODAL
         // ==========================================
         let currentChartBase64 = "";
 
@@ -622,7 +623,6 @@
                             const ctx = canvas.getContext('2d');
                             ctx.drawImage(img, 0, 0, width, height);
                             
-                            // High compression to protect Firestore document size
                             currentChartBase64 = canvas.toDataURL('image/jpeg', 0.4); 
                             
                             const preview = document.getElementById('chartPreview');
@@ -637,16 +637,52 @@
             }
         });
 
-        function openImageModal(tradeId) {
-            const trade = tradesData.find(t => t.id.toString() === tradeId.toString());
-            if(trade && trade.ChartImage) {
-                document.getElementById('fullSizeChart').src = trade.ChartImage;
-                document.getElementById('imageModal').style.display = 'flex';
+        function openTradeDetails(id) {
+            const trade = tradesData.find(t => t.id.toString() === id.toString());
+            if(!trade) return;
+
+            let html = `
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 0.8rem; background: var(--bg-input); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <div><strong>Session:</strong> ${trade.Killzone || 'N/A'}</div>
+                    <div><strong>Direction:</strong> ${trade.Direction || 'N/A'}</div>
+                    <div><strong>Entry:</strong> ${trade.Entry || 'N/A'}</div>
+                    <div><strong>Stop Loss:</strong> ${trade.StopLoss || 'N/A'}</div>
+                    <div><strong>Partials:</strong> ${trade.Partials || 'None'}</div>
+                    <div><strong>Final Exit:</strong> ${trade.Exit || 'None'}</div>
+                    <div><strong>Emotion:</strong> ${trade.EmotionBefore || 'N/A'}</div>
+                    <div><strong>Realized RR:</strong> ${trade.RR} R</div>
+                </div>
+                
+                <div style="margin-top: 5px;">
+                    <strong>Setup & Rules Alignment:</strong>
+                    <div style="font-size: 0.8rem; color: var(--accent-gold); font-weight: bold; margin-top: 4px;">
+                        [${trade.Grade || 'N/A'}] ${trade.Setups || 'Executed'}
+                    </div>
+                </div>
+
+                <div style="margin-top: 5px;">
+                    <strong>Reflection / Mistakes:</strong>
+                    <div style="background: var(--bg-input); padding: 12px; border-radius: 6px; margin-top: 6px; color: var(--text-muted); font-size: 0.8rem; border: 1px solid var(--border-color); line-height: 1.5;">
+                        ${trade.Improvement || 'No notes left.'}
+                    </div>
+                </div>
+            `;
+
+            if (trade.ChartImage) {
+                html += `
+                <div style="margin-top: 10px;">
+                    <strong>Chart Evidence:</strong>
+                    <img src="${trade.ChartImage}" style="width: 100%; border-radius: 8px; margin-top: 8px; border: 1px solid var(--border-color); max-height: 400px; object-fit: contain;">
+                </div>`;
             }
+
+            document.getElementById('dTitle').innerHTML = `${trade.Date} | ${trade.PNL >= 0 ? '<span class="text-green">+$'+trade.PNL+'</span>' : '<span class="text-red">-$'+Math.abs(trade.PNL)+'</span>'} <button onclick="closeDetailsModal()">✖</button>`;
+            document.getElementById('dContent').innerHTML = html;
+            document.getElementById('detailsModal').style.display = 'flex';
         }
 
-        function closeImageModal() {
-            document.getElementById('imageModal').style.display = 'none';
+        function closeDetailsModal() {
+            document.getElementById('detailsModal').style.display = 'none';
         }
 
         // ==========================================
@@ -1070,7 +1106,6 @@
                 const tradeGrade = trade.Grade || 'N/A';
                 const setupString = trade.Setups || `${trade.ChecklistScore || "?"} Rules Met`;
                 const directionStr = trade.Direction ? `<span style="color:var(--text-main); font-weight:800; font-size:0.75rem;">[${trade.Direction.toUpperCase()}]</span> ` : '';
-                const imgBtnHtml = trade.ChartImage ? `<button class="btn-small" onclick="openImageModal('${trade.id}')">📷 Chart</button>` : '';
 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
@@ -1079,7 +1114,7 @@
                     <td>${trade.RR} R</td>
                     <td style="color:var(--text-muted)">Min: $${currentTrailingThreshold.toLocaleString()}</td>
                     <td class="${trade.PNL >= 0 ? 'text-green' : 'text-red'}">${trade.PNL >= 0 ? '+$' : '-$'}${Math.abs(trade.PNL).toLocaleString()}</td>
-                    <td class="action-btns">${imgBtnHtml} <button class="btn-small delete" onclick="deleteTrade(${trade.id})">Del</button></td>
+                    <td class="action-btns"><button class="btn-small" onclick="openTradeDetails('${trade.id}')">📄 Details</button> <button class="btn-small delete" onclick="deleteTrade(${trade.id})">Del</button></td>
                 `;
                 tbody.insertBefore(tr, tbody.firstChild);
             });
@@ -1192,22 +1227,13 @@
         function logTrade() {
             try {
                 const pnlInput = document.getElementById('pnl');
-                if (!pnlInput || pnlInput.value.trim() === "") {
-                    alert("Please enter a Profit/Loss ($) amount.");
-                    return;
-                }
+                if (!pnlInput || pnlInput.value.trim() === "") { alert("Please enter a Profit/Loss ($) amount."); return; }
                 const pnlValue = parseFloat(pnlInput.value);
-                if (isNaN(pnlValue)) { 
-                    alert("Please enter a valid Profit/Loss amount."); 
-                    return; 
-                }
+                if (isNaN(pnlValue)) { alert("Please enter a valid Profit/Loss amount."); return; }
 
                 const dateInput = document.getElementById('tDate');
                 const dateVal = dateInput ? dateInput.value : "";
-                if (!dateVal) {
-                    alert("Please select a valid Date for this trade.");
-                    return;
-                }
+                if (!dateVal) { alert("Please select a valid Date for this trade."); return; }
 
                 const checksTotal = document.querySelectorAll('.preflight-check').length;
                 const checksDone = document.querySelectorAll('.preflight-check:checked').length;
@@ -1245,7 +1271,6 @@
                     displayedCalMonth = parseInt(parts[1]) - 1;
                 }
 
-                // Reset form
                 pnlInput.value = "";
                 if (document.getElementById('tImprovement')) document.getElementById('tImprovement').value = "";
                 if (partialsInput) partialsInput.value = "";
@@ -1286,6 +1311,9 @@
             renderDashboard();
         }
 
+        // ==========================================
+        // 5. EXCEL EXPORT (REMOVED SHEET 3 IMAGE DATA)
+        // ==========================================
         function exportToExcel() {
             const filteredTrades = tradesData.filter(t => t.accountId === activeAccountId);
             if (filteredTrades.length === 0 && Object.keys(preMarketLogs).length === 0) { alert("No logs available to export."); return; }
@@ -1293,6 +1321,7 @@
             const wb = XLSX.utils.book_new();
 
             if (filteredTrades.length > 0) {
+                // Strips out the base64 image strings so it doesn't inflate or break Excel
                 const safeTrades = filteredTrades.map(t => { const { ChartImage, ...safeT } = t; return safeT; });
                 const wsTrades = XLSX.utils.json_to_sheet(safeTrades);
                 XLSX.utils.book_append_sheet(wb, wsTrades, "Trade Logs");
@@ -1308,7 +1337,7 @@
         }
 
         // ==========================================
-        // 5. DEEP NLP & PRE-MARKET AI COACH
+        // 6. DEEP NLP & PRE-MARKET AI COACH
         // ==========================================
         function generateDeepAIFeedback(filteredTrades, activeAcc, quant) {
             const aiBox = document.getElementById('aiOutput');
