@@ -38,6 +38,15 @@
         .auth-toggle { font-size: 0.75rem; color: var(--accent-gold); text-align: center; cursor: pointer; text-decoration: underline; margin-top: 5px; }
         .auth-error { font-size: 0.75rem; color: var(--accent-red); text-align: center; display: none; }
 
+        /* Fullscreen Image Modal */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 1000; padding: 20px;}
+        .modal { background-color: var(--bg-panel); border: 1px solid var(--border-color); padding: 25px; border-radius: 12px; width: 100%; max-width: 450px; display: flex; flex-direction: column; gap: 15px; max-height: 90vh; overflow-y: auto; }
+        .modal.image-modal { max-width: 90vw; padding: 15px; }
+        .modal h3 { border-bottom: 1px solid var(--border-color); padding-bottom: 10px; color: var(--text-main); display: flex; justify-content: space-between; align-items: center;}
+        .modal h3 button { background: transparent; border: none; color: var(--text-muted); font-size: 1.2rem; cursor: pointer; transition: color 0.2s; }
+        .modal h3 button:hover { color: var(--accent-red); }
+        .img-modal-content { max-width: 100%; max-height: 75vh; border-radius: 8px; object-fit: contain; }
+
         /* Header */
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 15px; }
         .header h4 { font-size: 0.8rem; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 5px; font-weight: 700; color: var(--text-muted); }
@@ -73,9 +82,9 @@
         textarea { resize: vertical; min-height: 40px; }
 
         /* Chart Paste Area */
-        .image-paste-area { border: 2px dashed var(--border-color); background: var(--bg-input); padding: 18px; text-align: center; color: var(--text-muted); border-radius: 6px; cursor: pointer; font-size: 0.75rem; transition: all 0.2s; outline: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;}
+        .image-paste-area { border: 2px dashed var(--border-color); background: var(--bg-input); padding: 16px; text-align: center; color: var(--text-muted); border-radius: 6px; cursor: pointer; font-size: 0.75rem; transition: all 0.2s; outline: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;}
         .image-paste-area:focus { border-color: var(--accent-gold); color: var(--accent-gold); background: rgba(234, 179, 8, 0.05); }
-        .image-preview { max-width: 100%; max-height: 120px; border-radius: 4px; display: none; object-fit: contain; }
+        .image-preview { max-width: 100%; max-height: 120px; border-radius: 4px; display: none; object-fit: contain; margin-top: 6px; }
 
         /* Checklist */
         .checklist-container { background-color: var(--bg-input); border: 1px solid var(--border-color); border-radius: 6px; padding: 12px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 10px; }
@@ -139,21 +148,17 @@
         .btn-small:hover { border-color: var(--accent-gold); color: var(--accent-gold); }
         .btn-small.delete:hover { border-color: var(--accent-red); color: var(--accent-red); background-color: rgba(239, 68, 68, 0.1); }
 
-        /* Modals */
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 1000; padding: 20px;}
-        .modal { background-color: var(--bg-panel); border: 1px solid var(--border-color); padding: 25px; border-radius: 12px; width: 100%; max-width: 450px; display: flex; flex-direction: column; gap: 15px; max-height: 90vh; overflow-y: auto; }
-        .modal.image-modal { max-width: 90vw; padding: 15px; }
-        .modal h3 { border-bottom: 1px solid var(--border-color); padding-bottom: 10px; color: var(--text-main); display: flex; justify-content: space-between; align-items: center;}
-        .modal h3 button { background: transparent; border: none; color: var(--text-muted); font-size: 1.2rem; cursor: pointer; transition: color 0.2s; }
-        .modal h3 button:hover { color: var(--accent-red); }
-        .img-modal-content { max-width: 100%; max-height: 75vh; border-radius: 8px; object-fit: contain; }
+        /* Branding Footer */
+        .brand-footer { margin-top: 25px; text-align: center; border-top: 1px solid var(--border-color); padding-top: 15px; }
+        .custom-quote { font-size: 0.75rem; color: var(--text-muted); font-style: italic; line-height: 1.4; }
+        .quote-author { display: block; margin-top: 6px; font-size: 0.7rem; color: var(--accent-gold); font-weight: 700; }
 
-        /* MOBILE RESPONSIVE MEDIA QUERIES */
+        /* Mobile Responsive */
         @media (max-width: 1100px) {
             .dashboard { grid-template-columns: 1fr; }
             .mid-section { grid-template-columns: 1fr; }
             .stats-grid { grid-template-columns: repeat(3, 1fr); }
-            .log-panel { order: 2; } /* Moves logging below dashboard on mobile */
+            .log-panel { order: 2; }
             .right-panel { order: 1; }
         }
         @media (max-width: 650px) {
@@ -310,7 +315,7 @@
                     <div class="form-group">
                         <label>Chart Screenshot</label>
                         <div class="image-paste-area" id="pasteArea" tabindex="0">
-                            <span>📸 Click here and press Ctrl+V / Cmd+V to paste your chart</span>
+                            <span>📸 Click here and press Ctrl+V / Cmd+V to paste chart</span>
                         </div>
                         <img id="chartPreview" class="image-preview" src="">
                     </div>
@@ -421,13 +426,11 @@
                     <h4>Current Balance</h4>
                     <div class="value" id="accountBalance">$0</div>
                 </div>
-                <!-- EVAL PROGRESS -->
                 <div class="stat-card">
                     <h4 id="evalTitle">Eval Progress</h4>
                     <div class="progress-container"><div class="progress-bar" id="progressBar"></div></div>
                     <span class="progress-text" id="progressText">$0 / $0</span>
                 </div>
-                <!-- TRAILING DRAWDOWN PROGRESS -->
                 <div class="stat-card">
                     <h4>Buffer Left</h4>
                     <div class="progress-container"><div class="progress-bar red" id="ddProgressBar"></div></div>
@@ -468,7 +471,6 @@
                             <div class="val" id="expectancyVal">$0</div>
                         </div>
                     </div>
-                    <!-- LOCAL QUANT & ALGORITHMIC AI INSIGHTS -->
                     <div class="ai-output-box" id="aiOutput">
                         Awaiting trade log for automated execution & psychological analysis.
                     </div>
@@ -561,7 +563,7 @@
 
     <script>
         // ==========================================
-        // 1. FIREBASE CONFIGURATION (ACTIVE)
+        // 1. FIREBASE CONFIGURATION
         // ==========================================
         const firebaseConfig = {
             apiKey: "AIzaSyB9T-8fgSGbQJNVuWPEk1ZkIvf5nLyAivE",
@@ -584,7 +586,6 @@
             db = firebase.firestore();
         }
 
-        // Isolated User State
         let tradesData = [];
         let accounts = [{ id: 'default_1', name: 'New Account', firm: 'Personal', type: 'Funded', startBal: 50000, targetBal: 53000, trailingLimit: 2000 }];
         let activeAccountId = accounts[0].id;
@@ -606,9 +607,8 @@
                     reader.onload = function(event) {
                         const img = new Image();
                         img.onload = function() {
-                            // Compress the image down so it doesn't overload Firestore's 1MB limit
                             const canvas = document.createElement('canvas');
-                            const MAX_WIDTH = 700;
+                            const MAX_WIDTH = 600;
                             let width = img.width;
                             let height = img.height;
 
@@ -622,13 +622,13 @@
                             const ctx = canvas.getContext('2d');
                             ctx.drawImage(img, 0, 0, width, height);
                             
-                            // Compress as 50% Quality JPEG
-                            currentChartBase64 = canvas.toDataURL('image/jpeg', 0.5); 
+                            // High compression to protect Firestore document size
+                            currentChartBase64 = canvas.toDataURL('image/jpeg', 0.4); 
                             
                             const preview = document.getElementById('chartPreview');
                             preview.src = currentChartBase64;
                             preview.style.display = 'block';
-                            document.getElementById('pasteArea').innerHTML = "<span style='color:var(--accent-green)'>✅ Image Attached!</span><br>Paste again to replace";
+                            document.getElementById('pasteArea').innerHTML = "<span style='color:var(--accent-green)'>✅ Image Attached!</span><br><span style='font-size:0.65rem;'>Paste again to replace</span>";
                         }
                         img.src = event.target.result;
                     };
@@ -762,7 +762,9 @@
                     accounts: accounts,
                     settings: platformSettings,
                     preMarketLogs: preMarketLogs
-                }, { merge: true });
+                }, { merge: true }).catch(err => {
+                    console.error("Firestore sync error:", err);
+                });
             }
         }
 
@@ -1067,9 +1069,7 @@
 
                 const tradeGrade = trade.Grade || 'N/A';
                 const setupString = trade.Setups || `${trade.ChecklistScore || "?"} Rules Met`;
-                
                 const directionStr = trade.Direction ? `<span style="color:var(--text-main); font-weight:800; font-size:0.75rem;">[${trade.Direction.toUpperCase()}]</span> ` : '';
-                
                 const imgBtnHtml = trade.ChartImage ? `<button class="btn-small" onclick="openImageModal('${trade.id}')">📷 Chart</button>` : '';
 
                 const tr = document.createElement('tr');
@@ -1190,57 +1190,83 @@
         }
 
         function logTrade() {
-            const pnlValue = parseFloat(document.getElementById('pnl').value);
-            if (isNaN(pnlValue)) { alert("Please enter a valid Profit/Loss amount."); return; }
+            try {
+                const pnlInput = document.getElementById('pnl');
+                if (!pnlInput || pnlInput.value.trim() === "") {
+                    alert("Please enter a Profit/Loss ($) amount.");
+                    return;
+                }
+                const pnlValue = parseFloat(pnlInput.value);
+                if (isNaN(pnlValue)) { 
+                    alert("Please enter a valid Profit/Loss amount."); 
+                    return; 
+                }
 
-            const checksTotal = document.querySelectorAll('.preflight-check').length;
-            const checksDone = document.querySelectorAll('.preflight-check:checked').length;
-            const setupString = checksTotal > 0 ? `${checksDone}/${checksTotal} Rules Met` : "Executed";
+                const dateInput = document.getElementById('tDate');
+                const dateVal = dateInput ? dateInput.value : "";
+                if (!dateVal) {
+                    alert("Please select a valid Date for this trade.");
+                    return;
+                }
 
-            const dateVal = document.getElementById('tDate').value;
-            
-            const newTrade = {
-                id: Date.now(),
-                accountId: activeAccountId,
-                Date: dateVal,
-                Time: document.getElementById('tTime').value || "--:--",
-                Killzone: document.getElementById('tKillzone').value,
-                Direction: document.getElementById('tDirection').value,
-                Contracts: document.getElementById('tContracts').value || "1",
-                NewsImpact: document.getElementById('tNewsImpact').value,
-                EmotionBefore: document.getElementById('tEmotionBefore').value,
-                Setups: setupString,
-                ChecklistScore: `${checksDone}/${checksTotal}`,
-                Grade: activeGrade,
-                Entry: entryInput.value, StopLoss: stopInput.value, Exit: exitInput.value,
-                Partials: partialsInput.value || "",
-                SLHandles: document.getElementById('tSLHandles').value || "0",
-                TPHandles: document.getElementById('tTPHandles').value || "0",
-                RR: currentRR,
-                PNL: pnlValue,
-                Improvement: document.getElementById('tImprovement').value,
-                ChartImage: currentChartBase64
-            };
+                const checksTotal = document.querySelectorAll('.preflight-check').length;
+                const checksDone = document.querySelectorAll('.preflight-check:checked').length;
+                const setupString = checksTotal > 0 ? `${checksDone}/${checksTotal} Rules Met` : "Executed";
 
-            tradesData.push(newTrade);
-            saveCloudTrades(tradesData);
-            
-            if(dateVal) {
-                const parts = dateVal.split('-');
-                displayedCalYear = parseInt(parts[0]); displayedCalMonth = parseInt(parts[1]) - 1;
+                const newTrade = {
+                    id: Date.now(),
+                    accountId: activeAccountId,
+                    Date: dateVal,
+                    Time: (document.getElementById('tTime') && document.getElementById('tTime').value) || "--:--",
+                    Killzone: (document.getElementById('tKillzone') && document.getElementById('tKillzone').value) || "London Open",
+                    Direction: (document.getElementById('tDirection') && document.getElementById('tDirection').value) || "Long",
+                    Contracts: (document.getElementById('tContracts') && document.getElementById('tContracts').value) || "1",
+                    NewsImpact: (document.getElementById('tNewsImpact') && document.getElementById('tNewsImpact').value) || "Low / None",
+                    EmotionBefore: (document.getElementById('tEmotionBefore') && document.getElementById('tEmotionBefore').value) || "Calm / Focused",
+                    Setups: setupString,
+                    ChecklistScore: `${checksDone}/${checksTotal}`,
+                    Grade: activeGrade,
+                    Entry: entryInput ? entryInput.value : "", 
+                    StopLoss: stopInput ? stopInput.value : "", 
+                    Exit: exitInput ? exitInput.value : "",
+                    Partials: partialsInput ? partialsInput.value : "",
+                    RR: currentRR,
+                    PNL: pnlValue,
+                    Improvement: (document.getElementById('tImprovement') && document.getElementById('tImprovement').value) || "",
+                    ChartImage: currentChartBase64 || ""
+                };
+
+                tradesData.push(newTrade);
+                saveCloudTrades(tradesData);
+                
+                if (dateVal) {
+                    const parts = dateVal.split('-');
+                    displayedCalYear = parseInt(parts[0]); 
+                    displayedCalMonth = parseInt(parts[1]) - 1;
+                }
+
+                // Reset form
+                pnlInput.value = "";
+                if (document.getElementById('tImprovement')) document.getElementById('tImprovement').value = "";
+                if (partialsInput) partialsInput.value = "";
+                if (entryInput) entryInput.value = "";
+                if (stopInput) stopInput.value = "";
+                if (exitInput) exitInput.value = "";
+                if (rrOutput) rrOutput.value = "";
+                
+                currentChartBase64 = "";
+                const preview = document.getElementById('chartPreview');
+                if (preview) { preview.src = ""; preview.style.display = 'none'; }
+                const pasteArea = document.getElementById('pasteArea');
+                if (pasteArea) pasteArea.innerHTML = "<span>📸 Click here and press Ctrl+V / Cmd+V to paste chart</span>";
+
+                document.querySelectorAll('.preflight-check').forEach(cb => cb.checked = false);
+                calculateGrade();
+                renderDashboard();
+            } catch (err) {
+                alert("Error logging trade: " + err.message);
+                console.error(err);
             }
-
-            document.getElementById('pnl').value = ""; document.getElementById('tImprovement').value = "";
-            document.getElementById('tPartials').value = ""; entryInput.value = ""; stopInput.value = ""; 
-            exitInput.value = ""; rrOutput.value = ""; document.getElementById('tSLHandles').value = ""; document.getElementById('tTPHandles').value = "";
-            
-            currentChartBase64 = "";
-            document.getElementById('chartPreview').style.display = 'none';
-            document.getElementById('pasteArea').innerHTML = "<span>📸 Click here and press Ctrl+V / Cmd+V to paste your chart</span>";
-
-            document.querySelectorAll('.preflight-check').forEach(cb => cb.checked = false);
-            calculateGrade();
-            renderDashboard();
         }
 
         function copyLatestSnipe() {
@@ -1249,7 +1275,7 @@
             
             const t = filteredTrades[filteredTrades.length - 1]; 
             const pnlStr = t.PNL >= 0 ? `+$${t.PNL}` : `-$${Math.abs(t.PNL)}`;
-            const snipeText = `🎯 Snipe Executed\nAccount: ${accounts.find(a => a.id === activeAccountId).name}\nSession: ${t.Killzone}\nDirection: ${t.Direction || 'N/A'}\nTargets: ${t.SLHandles || 0} SL | ${t.TPHandles || 0} TP\nSetup: [${t.Grade}] ${t.Setups}\nRealized RR: ${t.RR}R\nPNL: ${pnlStr}`;
+            const snipeText = `🎯 Snipe Executed\nAccount: ${accounts.find(a => a.id === activeAccountId).name}\nSession: ${t.Killzone}\nDirection: ${t.Direction || 'N/A'}\nSetup: [${t.Grade}] ${t.Setups}\nRealized RR: ${t.RR}R\nPNL: ${pnlStr}`;
             
             navigator.clipboard.writeText(snipeText).then(() => { alert("Snipe details copied to clipboard!"); });
         }
@@ -1267,7 +1293,6 @@
             const wb = XLSX.utils.book_new();
 
             if (filteredTrades.length > 0) {
-                // Strip the base64 image strings so it doesn't break Excel
                 const safeTrades = filteredTrades.map(t => { const { ChartImage, ...safeT } = t; return safeT; });
                 const wsTrades = XLSX.utils.json_to_sheet(safeTrades);
                 XLSX.utils.book_append_sheet(wb, wsTrades, "Trade Logs");
