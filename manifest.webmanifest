@@ -1,0 +1,19 @@
+{
+  "name": "Sniping Journal",
+  "short_name": "Journal",
+  "description": "ICT trading journal with prop-firm drawdown tracking and a built-in performance coach.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#121419",
+  "theme_color": "#121419",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Log trade", "url": "./#/dashboard?log=1" },
+    { "name": "Coach", "url": "./#/coach" }
+  ]
+}
