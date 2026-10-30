@@ -28,7 +28,31 @@
   <div id="boot" class="boot" role="status">
     <div class="boot-mark">SJ</div>
     <p id="bootMsg">Loading your journal…</p>
+    <p id="bootErr" style="max-width:520px;margin:0 auto;padding:0 16px;color:#ee5d55;font-size:14px;word-break:break-word" hidden></p>
+    <p id="bootActions" style="display:flex;gap:16px;justify-content:center;font-size:14px" hidden>
+      <a href="javascript:location.reload()">Reload</a>
+      <a href="#" id="bootSignOut">Sign out</a>
+    </p>
   </div>
+  <script>
+    // If anything goes wrong while starting, show the reason on screen instead of hanging.
+    (function () {
+      var boot = document.getElementById('boot');
+      function show(msg) {
+        if (boot.hidden) return;
+        var e = document.getElementById('bootErr');
+        e.textContent = msg; e.hidden = false;
+        document.getElementById('bootActions').hidden = false;
+      }
+      window.addEventListener('error', function (ev) { show('Error: ' + (ev.message || 'a file failed to load') + (ev.filename ? ' (' + ev.filename.split('/').pop() + ')' : '')); }, true);
+      window.addEventListener('unhandledrejection', function (ev) { show('Error: ' + ((ev.reason && ev.reason.message) || ev.reason)); });
+      setTimeout(function () { show('This is taking longer than it should. Reload the page. If it keeps happening, send a screenshot of this screen.'); }, 25000);
+      document.getElementById('bootSignOut').addEventListener('click', function (ev) {
+        ev.preventDefault();
+        try { firebase.auth().signOut().then(function () { location.reload(); }); } catch (x) { location.reload(); }
+      });
+    })();
+  </script>
 
   <!-- Sign in -->
   <main id="auth" class="auth" hidden>
