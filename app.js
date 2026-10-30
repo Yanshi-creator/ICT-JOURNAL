@@ -113,6 +113,8 @@ async function start() {
         ? 'Your database rules are blocking access. See the setup notes in the README (Firestore rules).'
         : e.message;
       setBoot('Couldn’t load your journal. ' + hint);
+      const err = $('#bootErr'); if (err) { err.textContent = e.code ? `Code: ${e.code}` : ''; err.hidden = !e.code; }
+      const act = $('#bootActions'); if (act) act.hidden = false;
       return;
     }
     $('#boot').hidden = true; $('#app').hidden = false;
