@@ -1,6 +1,6 @@
 // Offline support. App files: network first, so updates show up right away; cache as fallback.
 // Libraries and fonts from CDNs: cache first (they're versioned). Firestore traffic is never touched.
-const VERSION = 'sj-v2.0.1';
+const VERSION = 'sj-v2.0.2';
 const SHELL = [
   './', './index.html', './app.css', './manifest.webmanifest',
   './app.js', './store.js', './stats.js', './coach.js', './demo.js', './firebase-config.js',
