@@ -31,6 +31,11 @@ export const newAccount = (o = {}) => ({
 
 export const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 
+function withTimeout(promise, ms, message) {
+  let t;
+  return Promise.race([promise, new Promise((_, rej) => { t = setTimeout(() => rej(Object.assign(new Error(message), { code: 'timeout' })), ms); })]).finally(() => clearTimeout(t));
+}
+
 function clean(obj) {
   // Firestore rejects undefined values.
   return JSON.parse(JSON.stringify(obj, (k, v) => (v === undefined || (typeof v === 'number' && !Number.isFinite(v)) ? null : v)));
@@ -43,7 +48,7 @@ class CloudStore {
     firebase.initializeApp(firebaseConfig);
     this.auth = firebase.auth();
     this.db = firebase.firestore();
-    this.db.enablePersistence({ synchronizeTabs: true }).catch(() => {}); // offline support where the browser allows it
+    // Offline cache is off: on some browsers it made the first load hang forever.
     this.kind = 'cloud';
     this.uid = null;
   }
@@ -64,7 +69,7 @@ class CloudStore {
 
   async load(onProgress = () => {}) {
     const ref = this.user();
-    const snap = await ref.get();
+    const snap = await withTimeout(ref.get(), 20000, 'Firebase took too long to answer. Check your internet connection and reload.');
     let data = snap.exists ? snap.data() : null;
 
     if (data && (Array.isArray(data.trades) || data.preMarketLogs) && !(data.schemaVersion >= 2)) {
@@ -79,7 +84,7 @@ class CloudStore {
       await ref.set(clean(data));
     }
 
-    const [tradesSnap, prepSnap] = await Promise.all([ref.collection('trades').get(), ref.collection('prep').get()]);
+    const [tradesSnap, prepSnap] = await withTimeout(Promise.all([ref.collection('trades').get(), ref.collection('prep').get()]), 30000, 'Your trades took too long to load. Reload the page to try again.');
     const trades = tradesSnap.docs.map((d) => ({ ...d.data(), id: d.id }));
     const prep = {};
     prepSnap.docs.forEach((d) => { prep[d.id] = d.data(); });
