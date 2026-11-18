@@ -5,24 +5,81 @@ export const MISTAKE_TAGS = [
   'No valid setup',
   'Against daily bias',
   'Entered too early',
+  'Hesitated / missed entry',
   'Moved / widened stop',
   'Cut winner early',
   'Held loser too long',
   'Oversized',
   'Revenge trade',
+  'Ignored my plan',
   'Traded through news',
   'Broke max trades rule',
+  'Distracted / tired',
 ];
 
-// Old journals only have free-text reflections. Map them to tags so history still counts.
-const LEGACY_KEYWORDS = {
-  'FOMO entry': ['chase', 'chased', 'fomo', 'rush', 'rushed', 'impatient', 'patience'],
-  'Cut winner early': ['cut', 'early exit', 'scared', 'panicked', 'closed early', 'left money'],
-  'Moved / widened stop': ['moved stop', 'moved my stop', 'widened', 'move sl', 'moved sl'],
-  'Against daily bias': ['htf', 'pd array', 'against bias', 'no bias', 'context', 'higher timeframe'],
-  'Oversized': ['oversize', 'over size', 'too big', 'too many contracts', 'heavy'],
-  'Revenge trade': ['revenge', 'tilt', 'win it back', 'make it back'],
+/* ---------- Reflection reader ----------
+   Reads what you wrote about a trade and picks out the mistakes in it, so the coach
+   counts them even when you forgot to tag them. Phrases after "didn't", "no", "avoided"
+   and similar are ignored, so "didn't chase" isn't read as FOMO. */
+const W = "[a-z’']*"; // lets "chase" match chased / chasing
+const NOTE_RULES = {
+  'FOMO entry': [`chas${W}`, 'fomo', `rush${W}`, 'jumped in', `impatien${W}`, `(?:couldn['’]?t|could not|didn['’]?t|did not) wait`, `(?:afraid|scared|worried) (?:to|of) miss${W}`, 'fear of missing'],
+  'Entered too early': [`(?:too )?early entry`, `entered (?:a bit |way )?(?:too )?early`, `got in (?:too )?early`, `before (?:the )?(?:candle )?(?:close|confirmation|displacement|ifvg|mss|bos|shift)`, `anticipat${W}`, `front[- ]?r[au]n${W}`, `should(?:['’]?ve| have) waited`, `didn['’]?t wait for (?:the )?(?:close|confirmation|displacement|ifvg|retrace|candle)`],
+  'Hesitated / missed entry': [`hesitat${W}`, `missed (?:the |my )?(?:entry|trade|move|setup)`, `(?:didn['’]?t|did not) (?:take|pull the trigger on) (?:it|the trade|the setup|the entry)`, 'froze', `second[- ]guess${W}`, `too late (?:to enter|on the entry)`],
+  'Moved / widened stop': [`mov${W} (?:my |the )?(?:stop|sl)(?! (?:to|at) (?:be|b/e|breakeven|break even|entry|profit))`, `widen${W} (?:my |the )?(?:stop|sl)`, `(?:stop|sl) (?:wider|further)`, `remov${W} (?:my |the )?(?:stop|sl)`],
+  'Cut winner early': [`cut (?:it|the trade|the winner|my winner|profits?|the runner)(?: short| early| too early)?`, `closed (?:it |the trade )?(?:too |way )?early`, `(?:took|take) (?:profits?|tp|partials?) too (?:early|soon)`, `exit${W} (?:too )?early`, 'left money', `scared out`, 'paper hand', `should(?:['’]?ve| have) held`, `didn['’]?t (?:hold|let it run)`],
+  'Held loser too long': [`held (?:the |a |my |onto the )?(?:loser|losing|loss)`, `(?:didn['’]?t|did not) (?:take|cut) (?:the |my )?loss`, `hop${W} (?:it|price) (?:would )?(?:come|comes|came) back`, `held (?:past|through) (?:my |the )?(?:stop|invalidation)`],
+  'Oversized': [`oversiz${W}`, `over[- ]sized`, `too (?:big|large|heavy|many contracts|much size)`, `siz${W} up`, `risk${W} too much`, 'heavy size'],
+  'Revenge trade': [`revenge`, `tilt${W}`, `(?:win|make|get) (?:it|that|the money|my money) back`, `angry`, `frustrat${W}`, 'mad at'],
+  'Against daily bias': [`against (?:my |the )?(?:bias|daily bias|trend|htf|higher time ?frame)`, `counter[- ]?trend`, `fought the trend`],
+  'Traded through news': [`(?:during|through|into|on) (?:the )?(?:news|cpi|nfp|fomc|ppi|powell)`, 'news spike', `red folder`],
+  'No valid setup': [`no (?:real |valid |clear )?setup`, `(?:wasn['’]?t|not) (?:a |my |a valid |a real )?setup`, `forc${W} (?:it|the trade|a trade|an entry)`, `bored${W}`, `boredom`, `gambl${W}`, 'random entry', 'no reason'],
+  'Ignored my plan': [`(?:didn['’]?t|did not) follow (?:my |the )?(?:plan|rules|checklist|model)`, `broke (?:my )?(?:rules|plan)`, `ignor${W} (?:my |the )?(?:plan|rules|checklist|bias)`, 'off plan', 'not in my plan', `deviat${W} from`],
+  'Broke max trades rule': [`overtrad${W}`, `over[- ]trad${W}`, 'too many trades', `(?:third|3rd|fourth|4th|fifth|5th) trade`, `broke my (?:max|trade) ?(?:limit|rule)?`],
+  'Distracted / tired': [`tired`, `exhausted`, `sleepy`, `distract${W}`, `(?:wasn['’]?t|not) focused`, 'lack of focus', `on my phone`, 'no sleep', 'not sleep'],
 };
+const COMPILED = Object.entries(NOTE_RULES).map(([tag, pats]) => [tag, pats.map((p) => new RegExp(`\\b${p}`, 'gi'))]);
+const NEGATION = /\b(?:not|no|never|didn['’]?t|did not|don['’]?t|do not|wasn['’]?t|without|avoid(?:ed)?|resist(?:ed)?|stopped myself from|instead of)\b[^.!?;,]{0,24}$/i;
+
+/** Mistakes mentioned in free text: [{ tag, quote }]. */
+export function readReflection(text) {
+  const s = String(text || '');
+  if (!s.trim()) return [];
+  const found = [];
+  for (const [tag, res] of COMPILED) {
+    for (const re of res) {
+      re.lastIndex = 0;
+      let m, hit = null;
+      while ((m = re.exec(s))) {
+        const before = s.slice(Math.max(0, m.index - 40), m.index);
+        if (NEGATION.test(before) && !/^(?:couldn|could not|didn|did not|wasn|not)/i.test(m[0])) continue;
+        hit = m; break;
+      }
+      if (hit) {
+        const a = Math.max(0, s.lastIndexOf(' ', Math.max(0, hit.index - 18)) + 1);
+        const bEnd = s.indexOf(' ', Math.min(s.length, hit.index + hit[0].length + 18));
+        const quote = (a > 0 ? '…' : '') + s.slice(a, bEnd < 0 ? s.length : bEnd).trim() + (bEnd > 0 ? '…' : '');
+        found.push({ tag, quote });
+        break;
+      }
+    }
+  }
+  return found;
+}
+
+/** Mistakes the reflection mentions that aren't tagged and weren't dismissed. */
+export function noteMistakes(t) {
+  const tagged = Array.isArray(t.Mistakes) ? t.Mistakes : [];
+  const dismissed = Array.isArray(t.DismissedNotes) ? t.DismissedNotes : [];
+  return readReflection(t.Improvement).filter((x) => !tagged.includes(x.tag) && !dismissed.includes(x.tag));
+}
+
+/** Every mistake on a trade: the ones you tagged plus the ones found in your reflection. */
+export function mistakesOf(t) {
+  const tagged = Array.isArray(t.Mistakes) ? t.Mistakes : [];
+  const noted = noteMistakes(t).map((x) => x.tag);
+  return noted.length ? [...tagged, ...noted] : tagged;
+}
 
 export const num = (v) => {
   const n = typeof v === 'number' ? v : parseFloat(v);
@@ -39,18 +96,6 @@ export function tradeTime(t) {
 
 export function sortTrades(trades) {
   return [...trades].sort((a, b) => tradeTime(a) - tradeTime(b) || (a.id > b.id ? 1 : -1));
-}
-
-export function mistakesOf(t) {
-  if (Array.isArray(t.Mistakes) && t.Mistakes.length) return t.Mistakes;
-  if (Array.isArray(t.Mistakes)) return []; // explicitly logged as clean
-  const text = (t.Improvement || '').toLowerCase();
-  if (!text) return [];
-  const found = [];
-  for (const [tag, words] of Object.entries(LEGACY_KEYWORDS)) {
-    if (words.some((w) => text.includes(w))) found.push(tag);
-  }
-  return found;
 }
 
 /* ---------- Partials / R engine ---------- */

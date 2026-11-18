@@ -1,6 +1,7 @@
 import { createStore, newAccount, newId, DEFAULT_SETTINGS } from './store.js';
 import * as S from './stats.js';
-import { buildCoach, weeklyReview, guardrails, money, pct, plain } from './coach.js';
+import { buildCoach, weeklyReview, guardrails, money, pct, plain, TAG_ACTIONS } from './coach.js';
+import { repeatMistakes, mistakeSentence, mistakeEcho, recurringPhrases } from './patterns.js';
 import { FIELDS, parseCsv, guessMapping, rowsToTrades } from './importer.js';
 import { drawShareCard } from './sharecard.js';
 
@@ -21,9 +22,25 @@ const EMOTIONS = ['Calm / Focused', 'Patient', 'FOMO / Rushed', 'Anxious', 'Over
 const NEWS = ['Low / None', 'Medium Impact', 'High Impact'];
 const POINT_VALUE = { NQ: 20, MNQ: 2, ES: 50, MES: 5, YM: 5, MYM: 0.5, RTY: 50, M2K: 5, CL: 1000, MCL: 100, GC: 100, MGC: 10 };
 
-function toast(msg) {
+function toast(msg, ms = 2600) {
   const t = $('#toast'); t.textContent = msg; t.hidden = false;
-  clearTimeout(toast._t); toast._t = setTimeout(() => { t.hidden = true; }, 2600);
+  clearTimeout(toast._t); toast._t = setTimeout(() => { t.hidden = true; }, ms);
+}
+
+/* ================= quotes ================= */
+const QUOTES = [
+  'Every blown account taught the same lesson. Stop paying for it twice.',
+  'A missed trade costs nothing. A forced one can cost the account.',
+  'Your edge only works if you’re still here to use it.',
+  'The market pays patience, not activity.',
+  'One clean trade beats five rushed ones.',
+  'Protect the account first. Profits find the traders still standing.',
+  'If it’s not your setup, it’s not your trade.',
+];
+function setQuote() {
+  const d = new Date(), day = Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 86400000);
+  const q = QUOTES[day % QUOTES.length];
+  $$('[data-quote]').forEach((el) => { el.textContent = `“${q}”`; });
 }
 
 /* ================= theme ================= */
@@ -120,6 +137,7 @@ function wireAuth() {
 }
 
 async function start() {
+  setQuote();
   wireAuth();
   store = createStore();
   if (!store) { setBoot('Couldn’t reach the sync service. Check your internet connection, then reload the page.'); return; }
@@ -279,7 +297,8 @@ function tradeRow(t) {
   const p = S.pnlOf(t), r = S.rOf(t);
   const dir = t.Direction ? `<span class="tag ${t.Direction === 'Long' ? 'long' : 'short'}">${esc(t.Direction)}</span>` : '';
   const grade = t.Grade && t.Grade !== 'N/A' ? `<span class="tag grade">${esc(t.Grade)}</span>` : '';
-  const mist = S.mistakesOf(t).slice(0, 2).map((m) => `<span class="tag mistake">${esc(m)}</span>`).join('');
+  const noted = new Set(S.noteMistakes(t).map((x) => x.tag));
+  const mist = S.mistakesOf(t).slice(0, 2).map((m) => `<span class="tag mistake${noted.has(m) ? ' noted' : ''}" ${noted.has(m) ? 'title="Found in your reflection"' : ''}>${esc(m)}</span>`).join('');
   const img = t.hasImage || t.ChartImage ? '<span class="tag img" title="Has chart screenshot"><svg><use href="#i-image"/></svg></span>' : '';
   return `<button class="trade-row" data-action="trade" data-id="${esc(t.id)}">
     <span class="when"><b>${esc(fmtDate(t.Date))}</b>${esc(t.Time && t.Time !== '--:--' ? t.Time : '')}</span>
@@ -334,6 +353,7 @@ function renderDashboard(v) {
   const coach = tr.length ? buildCoach(tr, { prep: state.prep, settings: state.settings, accountState: st }) : null;
   const name = state.profile?.displayName ? esc(state.profile.displayName.split(' ')[0]) : '';
   const recent = S.sortTrades(tr).reverse().slice(0, 6);
+  const watch = tr.length ? repeatMistakes(tr).find((m) => m.last30 >= 2) : null;
 
   v.innerHTML = `
     ${g.alerts.map((x) => `<div class="alert ${/Take 30/.test(x) ? 'calm' : ''}">${esc(x)}</div>`).join('')}
@@ -348,6 +368,7 @@ function renderDashboard(v) {
       <section class="panel">
         <div class="panel-head"><h2>Coach</h2><a href="#/coach">See full breakdown</a></div>
         <p style="font-size:16px;line-height:1.5">${esc(coach.headline)}</p>
+        ${watch ? `<p class="watch" style="margin-top:12px"><b>Watch for today:</b> ${esc(mistakeSentence(watch))}.</p>` : ''}
         <div class="insights" style="margin-top:16px">${coach.leaks.slice(0, 3).map((l) => insightHtml(l, true)).join('') || '<p class="muted">No leaks found yet.</p>'}</div>
       </section>
       <section class="panel"><div class="panel-head"><h2>Recent trades</h2><a href="#/trades">All trades</a></div>
@@ -460,6 +481,7 @@ async function openDetail(id) {
   const prep = state.prep[t.Date];
   const bias = S.biasRelation(t, state.prep);
   const rulesAll = t.RulesAll || [], rulesChecked = t.RulesChecked || [];
+  const tagged = Array.isArray(t.Mistakes) ? t.Mistakes : [], noted = S.noteMistakes(t);
   const sh = openSheet(`${sheetHead(`${esc(fmtDate(t.Date, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }))}${t.Time && t.Time !== '--:--' ? ' at ' + esc(t.Time) : ''}`)}
     <div class="sheet-body">
       <div class="detail-hero"><div><p class="muted">${t.Model ? `<span class="tag model">${esc(t.Model)}</span> ` : ''}${esc(t.Killzone || '')} ${esc(t.Instrument || '')}</p><p class="big ${cls(p)}">${signed(p)}</p></div>
@@ -471,7 +493,7 @@ async function openDetail(id) {
       </div>
       ${hasPlan(prep) ? `<div><p class="fs-title">Pre-market plan that day</p><div class="note-box">${esc(prep.bias)} bias${prep.dol ? `, targeting ${esc(prep.dol)}` : ''}${prep.htfArray ? `\nHTF: ${esc(prep.htfArray)}` : ''}\n<span class="${bias === 'Against daily bias' ? 'neg' : bias === 'With daily bias' ? 'pos' : 'muted'}">${esc(bias)}</span></div></div>` : ''}
       ${rulesAll.length ? `<div><p class="fs-title">Checklist <span class="muted" style="font-weight:400">${rulesChecked.length} of ${rulesAll.length}</span></p><div class="checks">${rulesAll.map((x) => `<div class="check" style="cursor:default"><span class="${rulesChecked.includes(x) ? 'pos' : 'neg'}" style="width:18px">${rulesChecked.includes(x) ? '✓' : '✗'}</span><span>${esc(x)}</span></div>`).join('')}</div></div>` : t.Setups ? `<p class="muted">Checklist: ${esc(t.Setups)}</p>` : ''}
-      ${S.mistakesOf(t).length ? `<div><p class="fs-title">Mistakes</p><div class="chips">${S.mistakesOf(t).map((m) => `<span class="tag mistake">${esc(m)}</span>`).join('')}</div>${!Array.isArray(t.Mistakes) ? '<p class="muted" style="font-size:13px;margin-top:6px">Picked up from your notes. Edit the trade to confirm.</p>' : ''}</div>` : ''}
+      ${tagged.length || noted.length ? `<div><p class="fs-title">Mistakes</p>${tagged.length ? `<div class="chips">${tagged.map((m) => `<span class="tag mistake">${esc(m)}</span>`).join('')}</div>` : ''}${noted.length ? `<div class="noted">${noted.map((x) => `<div class="noted-row"><div><span class="tag mistake noted">${esc(x.tag)}</span><p>Found in your reflection: <q>${esc(x.quote)}</q></p></div><div class="noted-act"><button class="btn btn-ghost btn-sm" data-confirm="${esc(x.tag)}">Tag it</button><button class="btn btn-ghost btn-sm" data-dismiss="${esc(x.tag)}">Not a mistake</button></div></div>`).join('')}</div>` : ''}</div>` : ''}
       ${t.Improvement ? `<div><p class="fs-title">Reflection</p><div class="note-box">${esc(t.Improvement)}</div></div>` : ''}
       <div id="detailImg"></div>
     </div>
@@ -484,6 +506,19 @@ async function openDetail(id) {
   $('#dEdit', sh).addEventListener('click', () => openEditor(t));
   $('#dCopy', sh).addEventListener('click', () => copyRecap(t));
   $('#dShare', sh).addEventListener('click', () => openShareCard(t));
+  const resolveNote = async (tag, confirm) => {
+    const { ChartImage, ...rest } = t;
+    const upd = { ...rest, id: String(t.id), updatedAt: Date.now() };
+    if (confirm) upd.Mistakes = [...new Set([...(Array.isArray(t.Mistakes) ? t.Mistakes : []), tag])];
+    else upd.DismissedNotes = [...new Set([...(t.DismissedNotes || []), tag])];
+    if (ChartImage) upd.hasImage = true;
+    try { await Promise.race([store.saveTrade(upd, ChartImage), new Promise((res) => setTimeout(res, 2500))]); } catch (e) { toast('Couldn’t save: ' + e.message); return; }
+    state.trades = state.trades.map((x) => (x === t ? upd : x));
+    toast(confirm ? `Tagged “${tag}”` : 'Got it. The coach will ignore that one.');
+    render(); openDetail(upd.id);
+  };
+  $$('[data-confirm]', sh).forEach((b) => b.addEventListener('click', () => resolveNote(b.dataset.confirm, true)));
+  $$('[data-dismiss]', sh).forEach((b) => b.addEventListener('click', () => resolveNote(b.dataset.dismiss, false)));
   $('#dDelete', sh).addEventListener('click', async () => {
     if (!confirm('Delete this trade? This can’t be undone.')) return;
     await store.deleteTrades([String(t.id)]);
@@ -574,8 +609,11 @@ function openEditor(existing = null) {
   const opt = (list, cur) => list.map((x) => `<option ${x === cur ? 'selected' : ''}>${esc(x)}</option>`).join('');
   const models = [...new Set([...(state.settings.models || []), d.Model].filter(Boolean))];
 
+  const watch = existing ? null : repeatMistakes(acctTrades()).find((m) => m.last30 >= 2);
+  let dismissed = [...(existing?.DismissedNotes || [])];
   const sh = openSheet(`${sheetHead(existing ? 'Edit trade' : `Log trade in ${esc(acct().name)}`)}
     <form class="sheet-body" id="tradeForm" novalidate>
+      ${watch ? `<p class="watch"><b>Watch for:</b> ${esc(mistakeSentence(watch))}.</p>` : ''}
       <fieldset class="fs"><legend>When</legend>
         <div class="grid-3">
           <label class="field"><span>Date</span><input type="date" name="Date" value="${esc(d.Date)}" required></label>
@@ -624,7 +662,8 @@ function openEditor(existing = null) {
       </fieldset>
 
       <fieldset class="fs"><legend>Reflection</legend>
-        <textarea name="Improvement" placeholder="What did you see? What would you do differently?">${esc(d.Improvement)}</textarea>
+        <textarea name="Improvement" placeholder="What did you see? What would you do differently? Write it honestly, the coach reads it.">${esc(d.Improvement)}</textarea>
+        <div class="note-hints" id="noteHints" aria-live="polite"></div>
       </fieldset>
 
       <fieldset class="fs"><legend>Chart screenshot</legend>
@@ -654,6 +693,7 @@ function openEditor(existing = null) {
     RulesChecked: $$('input[name=rule]:checked', sh).map((x) => x.value),
     Mistakes: $$('#mistakeChips [aria-pressed=true]', sh).map((x) => x.dataset.v),
     Model: $('#modelChips [aria-pressed=true]', sh)?.dataset.v || '',
+    DismissedNotes: dismissed,
     Improvement: val('Improvement'),
   });
 
@@ -673,6 +713,19 @@ function openEditor(existing = null) {
     $('#gradePill', sh).textContent = total ? `${x.RulesChecked.length}/${total}  ${g}` : '';
   };
 
+  const hints = () => {
+    const on = $$('#mistakeChips [aria-pressed=true]', sh).map((x) => x.dataset.v);
+    const found = S.readReflection(form.elements.Improvement.value).filter((x) => !on.includes(x.tag) && !dismissed.includes(x.tag));
+    $('#noteHints', sh).innerHTML = found.length ? `<p>Your reflection sounds like a mistake. It counts unless you say otherwise:</p>${found.map((x) => `<div class="hint-row"><span class="tag mistake noted">${esc(x.tag)}</span><button type="button" class="link" data-tag-hint="${esc(x.tag)}">Tag it</button><button type="button" class="link muted" data-skip-hint="${esc(x.tag)}">Not a mistake</button></div>`).join('')}` : '';
+  };
+  $('#noteHints', sh).addEventListener('click', (e) => {
+    const a = e.target.closest('[data-tag-hint]'), b = e.target.closest('[data-skip-hint]');
+    if (a) $(`#mistakeChips [data-v="${CSS.escape(a.dataset.tagHint)}"]`, sh)?.setAttribute('aria-pressed', 'true');
+    if (b) dismissed.push(b.dataset.skipHint);
+    hints();
+  });
+  form.elements.Improvement.addEventListener('input', hints);
+  hints();
   form.addEventListener('input', (e) => {
     if (e.target.name === 'Killzone') sessionTouched = true;
     if (e.target.name === 'Time' && !sessionTouched) { const s = sessionFor(e.target.value); if (s) form.elements.Killzone.value = s; }
@@ -680,7 +733,7 @@ function openEditor(existing = null) {
   });
   $('#dirSeg', sh).addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; $$('#dirSeg button', sh).forEach((x) => x.setAttribute('aria-pressed', x === b)); recalc(); });
   $('#emoChips', sh).addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; $$('#emoChips button', sh).forEach((x) => x.setAttribute('aria-pressed', x === b)); });
-  $('#mistakeChips', sh).addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') !== 'true'); });
+  $('#mistakeChips', sh).addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') !== 'true'); hints(); });
   $('#modelChips', sh).addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; const on = b.getAttribute('aria-pressed') !== 'true'; $$('#modelChips button', sh).forEach((x) => x.setAttribute('aria-pressed', x === b && on)); });
 
   // Screenshot
@@ -740,7 +793,8 @@ function openEditor(existing = null) {
       const i = state.trades.findIndex((t) => String(t.id) === trade.id);
       if (i >= 0) state.trades[i] = trade; else state.trades.push(trade);
       const [yy, mm] = trade.Date.split('-').map(Number); state.cal = { y: yy, m: mm - 1 };
-      toast(existing ? 'Changes saved' : 'Trade saved');
+      const echo = mistakeEcho(trade, acctTrades());
+      if (echo && echo.n >= 2) toast(echo.text, 6500); else toast(existing ? 'Changes saved' : 'Trade saved');
       if (another) { closeSheet(); render(); openEditor(); const f = $('#tradeForm'); f.elements.Date.value = trade.Date; f.elements.Killzone.value = trade.Killzone; f.elements.Instrument.value = trade.Instrument; }
       else { closeSheet(); render(); }
     } catch (e) {
@@ -760,6 +814,25 @@ function insightHtml(l, compact = false) {
     <div><h3>${esc(l.title)}</h3>${compact ? '' : `<p>${esc(l.body)}</p>`}<p class="do"><b>Do this:</b> ${esc(l.action)}</p></div>
     <div class="meta">${compact ? '' : impact}<span class="badge ${l.confidence}">${l.confidence === 'solid' ? `${l.n} trades` : `Early signal, ${l.n} trades`}</span></div>
   </article>`;
+}
+
+function repeatHtml(tr) {
+  const repeats = repeatMistakes(tr).slice(0, 4);
+  const phrases = recurringPhrases(tr, state.prep, 4);
+  const caught = tr.filter((t) => S.noteMistakes(t).length).length;
+  const trend = { worse: '<span class="trend worse">▲ More often lately</span>', better: '<span class="trend better">▼ Fading</span>', same: '<span class="trend">Steady</span>' };
+  return `<section class="panel">
+    <div class="panel-head"><h2>Same mistakes, again</h2><span class="sub">${caught ? `${caught} trade${caught === 1 ? '' : 's'} caught from your reflections` : 'From your tags and your reflections'}</span></div>
+    ${repeats.length ? `<div class="repeat-grid">${repeats.map((m) => `<div class="repeat">
+      <div class="repeat-top"><h3>${esc(m.tag)}</h3>${trend[m.trend]}</div>
+      <div><p class="repeat-cost num ${cls(m.cost)}">${signed(m.cost)}</p><small class="muted">${m.n} trades in total, ${m.last30} in the last 30 days</small></div>
+      ${m.trigger ? `<p>Usually happens <b>${esc(m.trigger.phrase)}</b> (${m.trigger.hits} of ${m.trigger.of} times).</p>` : ''}
+      ${m.chain ? `<p>Your next trade often brings <b>${esc(m.chain.tag)}</b> (${m.chain.n}×).</p>` : ''}
+      <p class="muted">${m.cleanTrades ? `${m.cleanTrades} clean trade${m.cleanTrades === 1 ? '' : 's'} since the last one.` : 'It happened on your latest trade.'}</p>
+      <p class="do"><b>Do this:</b> ${esc(TAG_ACTIONS[m.tag] || `Put “${m.tag}” at the top of your checklist as a warning.`)}</p>
+    </div>`).join('')}</div>` : '<p class="muted">No mistake has come back twice yet. Tag mistakes when you log, or just describe them in your reflection, and the coach will track them.</p>'}
+    ${phrases.length ? `<div class="echo"><p class="fs-title">What you keep writing to yourself</p>${phrases.map((p) => `<div class="echo-row"><q>${esc(p.phrase)}</q><span class="muted">${p.n} notes</span>${p.net != null ? `<b class="num ${cls(p.net)}">${signed(p.net)}</b>` : '<b></b>'}</div>`).join('')}<p class="help" style="margin-top:8px">A lesson you keep writing hasn’t stuck yet. Turn it into a checklist rule in Settings.</p></div>` : ''}
+  </section>`;
 }
 
 function renderCoach(v) {
@@ -792,6 +865,8 @@ function renderCoach(v) {
       </div>
       ${c.discipline ? `<div class="score"><div class="score-ring" style="--v:${c.discipline.score};--ring:${ring}"><b>${c.discipline.score}</b></div><span>Discipline score</span></div>` : ''}
     </section>
+
+    ${repeatHtml(tr)}
 
     <section class="panel">
       <div class="panel-head"><h2>Fix these first</h2><span class="sub">Ranked by money lost</span></div>

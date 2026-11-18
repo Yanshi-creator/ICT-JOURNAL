@@ -1,9 +1,9 @@
 // Offline support. App files: network first, so updates show up right away; cache as fallback.
 // Libraries and fonts from CDNs: cache first (they're versioned). Firestore traffic is never touched.
-const VERSION = 'windage-v3.0.0';
+const VERSION = 'windage-v3.1.0';
 const SHELL = [
   './', './index.html', './app.css', './manifest.webmanifest',
-  './app.js', './store.js', './stats.js', './coach.js', './demo.js', './importer.js', './sharecard.js', './firebase-config.js',
+  './app.js', './store.js', './stats.js', './coach.js', './demo.js', './importer.js', './sharecard.js', './patterns.js', './firebase-config.js',
   './icon-192.png', './icon-512.png',
 ];
 const CDN = ['cdn.jsdelivr.net', 'cdnjs.cloudflare.com', 'www.gstatic.com', 'fonts.googleapis.com', 'fonts.gstatic.com'];

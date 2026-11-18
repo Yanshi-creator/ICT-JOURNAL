@@ -40,6 +40,9 @@ const TAG_ACTIONS = {
   'Revenge trade': 'After any loss, start a 30-minute timer before you can look at the chart again.',
   'Traded through news': 'Be flat 5 minutes before and after red-folder news.',
   'Broke max trades rule': 'When you hit your trade limit, close the platform.',
+  'Hesitated / missed entry': 'If every box on your checklist is ticked, you enter. Decide the trigger before the session, not during it.',
+  'Ignored my plan': 'Read your pre-market plan out loud before the open. If a trade isn\'t in it, it isn\'t yours.',
+  'Distracted / tired': 'On days you slept badly or can\'t focus, trade one contract or don\'t trade.',
 };
 const SOLID = 10;
 const confidence = (n) => (n >= SOLID ? 'solid' : 'early');
@@ -301,4 +304,4 @@ export function guardrails(trades, settings = {}, today = isoDate(new Date())) {
   return { count: t.length, pnl, alerts };
 }
 
-export { money, pct, plain };
+export { money, pct, plain, TAG_ACTIONS };
