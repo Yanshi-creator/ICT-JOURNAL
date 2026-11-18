@@ -275,7 +275,7 @@ export function weeklyReview(trades, prep, settings, now = new Date()) {
   cur.forEach((t) => mistakesOf(t).forEach((m) => { tags[m] = (tags[m] || 0) + 1; }));
   const topMistake = Object.entries(tags).sort((a, b) => b[1] - a[1])[0];
   const best = [...cur].sort((a, b) => pnlOf(b) - pnlOf(a))[0];
-  const prepDays = Object.keys(prep || {}).filter((d) => d >= isoDate(ws) && d <= isoDate(we)).length;
+  const prepDays = Object.keys(prep || {}).filter((d) => prep[d]?.bias && d >= isoDate(ws) && d <= isoDate(we)).length;
   const tradeDays = new Set(cur.map((t) => t.Date)).size;
   return {
     range: [isoDate(ws), isoDate(we)],

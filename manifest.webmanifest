@@ -1,12 +1,12 @@
 {
-  "name": "Sniping Journal",
-  "short_name": "Journal",
-  "description": "ICT trading journal with prop-firm drawdown tracking and a built-in performance coach.",
+  "name": "Windage",
+  "short_name": "Windage",
+  "description": "Trading journal for ICT and prop-firm futures traders, with playbooks, broker import and a built-in coach.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#121419",
-  "theme_color": "#121419",
+  "background_color": "#0f1220",
+  "theme_color": "#0f1220",
   "icons": [
     { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
@@ -14,6 +14,7 @@
   ],
   "shortcuts": [
     { "name": "Log trade", "url": "./#/dashboard?log=1" },
+    { "name": "Playbook", "url": "./#/playbook" },
     { "name": "Coach", "url": "./#/coach" }
   ]
 }

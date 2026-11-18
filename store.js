@@ -20,6 +20,8 @@ export const DEFAULT_SETTINGS = {
   maxTradesPerDay: 2,
   dailyLossLimit: null,
   instruments: ['NQ', 'MNQ', 'ES', 'MES'],
+  models: ['Silver Bullet', '2022 Model', 'Unicorn', 'OTE', 'Judas Swing', 'Turtle Soup', 'Breaker'],
+  theme: 'dusk',
 };
 
 export const newAccount = (o = {}) => ({

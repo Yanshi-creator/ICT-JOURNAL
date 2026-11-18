@@ -17,6 +17,8 @@ function rng(seed) {
 
 export function demoData(now = new Date()) {
   const r = rng(42);
+  const r2 = rng(7); // separate stream so models and reviews don't change the rest of the sample
+  const pick2 = (a) => a[Math.floor(r2() * a.length)];
   const pick = (a) => a[Math.floor(r() * a.length)];
   const accounts = [
     { id: 'demo_eval', name: 'Apex 50K Eval', firm: 'Apex', type: 'Evaluation', startBal: 50000, targetBal: 53000, trailingLimit: 2500, ddType: 'trailing', trailLockAt: 50100 },
@@ -74,15 +76,29 @@ export function demoData(now = new Date()) {
         Setups: `${rulesChecked.length}/${DEFAULT_CHECKLIST.length} rules met`, ChecklistScore: `${rulesChecked.length}/${DEFAULT_CHECKLIST.length}`,
         Grade: grade, Entry: String(entry), StopLoss: String(stop), Exit: String(exit), Partials: '', RR: rMult, PNL: pnl,
         Mistakes: mistakes,
+        Model: win ? pick2(['Silver Bullet', 'Silver Bullet', '2022 Model', '2022 Model', 'Unicorn', 'OTE', 'Judas Swing']) : pick2(['Turtle Soup', 'Turtle Soup', 'Silver Bullet', '2022 Model', 'Judas Swing', 'OTE', 'Unicorn', '']),
         Improvement: win ? pick(['Followed the plan.', 'Could have held to DOL.', '']) : pick(['Entered before displacement confirmed.', 'Should have waited for the iFVG.', 'Took it out of boredom.', '']),
       });
       lastLoss = pnl < 0;
       if (k === 0 && win && r() < 0.5) break;
     }
   }
+  // End-of-day reviews on most past days, rated roughly by how the day went.
+  const byDay = {};
+  trades.forEach((t) => { (byDay[t.Date] ||= []).push(t); });
+  Object.entries(byDay).forEach(([date, list]) => {
+    if (r2() < 0.25) return;
+    const net = list.reduce((s, t) => s + t.PNL, 0), mistakes = list.flatMap((t) => t.Mistakes);
+    const rating = Math.max(1, Math.min(5, Math.round(3 + (net > 0 ? 1 : -1) - Math.min(2, mistakes.length) + (r2() < 0.3 ? 1 : 0))));
+    prep[date] = {
+      ...(prep[date] || { planSaved: false }), rating,
+      wentWell: net > 0 ? pick2(['Waited for displacement before entering.', 'Held to the draw on liquidity.', 'Stopped after one good trade.']) : pick2(['Respected my stop.', 'Logged everything honestly.', '']),
+      lesson: mistakes.length ? pick2(['No second trade after a loss.', 'Wait for the iFVG, no anticipating.', 'Size down when it is choppy.']) : pick2(['Same again tomorrow.', 'Let the runner work.', '']),
+    };
+  });
   return {
     accounts, activeAccountId: 'demo_eval', trades, prep,
-    settings: { checklist: [...DEFAULT_CHECKLIST], maxTradesPerDay: 2, dailyLossLimit: 600, instruments: ['NQ', 'MNQ', 'ES', 'MES'] },
-    profile: { displayName: 'Demo trader' },
+    settings: { checklist: [...DEFAULT_CHECKLIST], maxTradesPerDay: 2, dailyLossLimit: 600, instruments: ['NQ', 'MNQ', 'ES', 'MES'], models: ['Silver Bullet', '2022 Model', 'Unicorn', 'OTE', 'Judas Swing', 'Turtle Soup', 'Breaker'], theme: 'dusk' },
+    profile: { displayName: 'Demo trader', handle: 'yanshi.snipes' },
   };
 }

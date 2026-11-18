@@ -3,15 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Sniping Journal</title>
-  <meta name="description" content="ICT trading journal with prop-firm drawdown tracking and a built-in performance coach.">
-  <meta name="theme-color" content="#121419">
+  <title>Windage</title>
+  <meta name="description" content="Windage: the trading journal for ICT and prop-firm futures traders. Playbooks, drawdown tracking, broker import and a built-in coach.">
+  <meta name="theme-color" content="#0f1220">
+  <script>try { var t = localStorage.getItem('windage-theme'); if (t && t !== 'dusk') document.documentElement.dataset.theme = t; } catch (e) {}</script>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon-192.png" type="image/png">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Sniping Journal">
+  <meta name="apple-mobile-web-app-title" content="Windage">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -26,7 +27,7 @@
 </head>
 <body>
   <div id="boot" class="boot" role="status">
-    <div class="boot-mark">SJ</div>
+    <div class="boot-mark"><svg class="mark" aria-hidden="true"><use href="#i-mark"/></svg></div>
     <p id="bootMsg">Loading your journal…</p>
     <p id="bootErr" style="max-width:520px;margin:0 auto;padding:0 16px;color:#ee5d55;font-size:14px;word-break:break-word" hidden></p>
     <p id="bootActions" style="display:flex;gap:16px;justify-content:center;font-size:14px" hidden>
@@ -57,9 +58,9 @@
   <!-- Sign in -->
   <main id="auth" class="auth" hidden>
     <section class="auth-intro">
-      <div class="brand-lockup"><span class="brand-mark">SJ</span><span>Sniping Journal</span></div>
-      <h1>Find the trades that are costing you money.</h1>
-      <p>Log every entry, track your prop-firm drawdown, and let the coach show you which sessions, setups and habits are leaking your P&amp;L.</p>
+      <div class="brand-lockup"><span class="brand-mark"><svg class="mark" aria-hidden="true"><use href="#i-mark"/></svg></span><span>Windage</span></div>
+      <h1>Read the wind. Adjust your aim.</h1>
+      <p>Log every trade or import it from your broker, track your prop-firm drawdown, and see which setups, sessions and habits actually pay you.</p>
       <blockquote>“It's not a game of getting rich quick, so remember the number of times you have lost your accounts chasing that.”<cite>Yanshi Madhavani, <a href="https://instagram.com/yanshi.snipes" target="_blank" rel="noopener">@yanshi.snipes</a></cite></blockquote>
     </section>
     <form class="auth-card" id="authForm" novalidate>
@@ -82,12 +83,13 @@
   <!-- App -->
   <div id="app" class="app" hidden>
     <aside class="sidebar">
-      <div class="brand-lockup"><span class="brand-mark">SJ</span><span>Sniping Journal</span></div>
+      <div class="brand-lockup"><span class="brand-mark"><svg class="mark" aria-hidden="true"><use href="#i-mark"/></svg></span><span>Windage</span></div>
       <nav class="side-nav" aria-label="Main">
         <a href="#/dashboard" data-nav="dashboard"><svg><use href="#i-home"/></svg>Dashboard</a>
         <a href="#/trades" data-nav="trades"><svg><use href="#i-list"/></svg>Trades</a>
         <a href="#/coach" data-nav="coach"><svg><use href="#i-spark"/></svg>Coach</a>
-        <a href="#/prep" data-nav="prep"><svg><use href="#i-sun"/></svg>Pre-market</a>
+        <a href="#/playbook" data-nav="playbook"><svg><use href="#i-book"/></svg>Playbook</a>
+        <a href="#/prep" data-nav="prep"><svg><use href="#i-sun"/></svg>Daily journal</a>
         <a href="#/accounts" data-nav="accounts"><svg><use href="#i-wallet"/></svg>Accounts</a>
         <a href="#/settings" data-nav="settings"><svg><use href="#i-gear"/></svg>Settings</a>
       </nav>
@@ -100,7 +102,7 @@
     <div class="main">
       <header class="topbar">
         <div class="topbar-left">
-          <span class="brand-mark mobile-only">SJ</span>
+          <span class="brand-mark mobile-only"><svg class="mark" aria-hidden="true"><use href="#i-mark"/></svg></span>
           <h1 id="pageTitle">Dashboard</h1>
         </div>
         <div class="topbar-right">
@@ -119,7 +121,7 @@
       <a href="#/trades" data-nav="trades"><svg><use href="#i-list"/></svg><span>Trades</span></a>
       <button class="bottom-log" data-action="log" aria-label="Log trade"><svg><use href="#i-plus"/></svg></button>
       <a href="#/coach" data-nav="coach"><svg><use href="#i-spark"/></svg><span>Coach</span></a>
-      <a href="#/prep" data-nav="prep"><svg><use href="#i-sun"/></svg><span>Prep</span></a>
+      <a href="#/prep" data-nav="prep"><svg><use href="#i-sun"/></svg><span>Journal</span></a>
     </nav>
   </div>
 
@@ -130,6 +132,8 @@
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-mark" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7.2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2v5.2M12 16.8V22M2 12h5.2M16.8 12H22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="13.3" cy="11" r="1.6" fill="currentColor"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5zM4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5M8.5 7.5h7M8.5 11h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/></symbol>
     <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5M5.5 9.5V20h13V9.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
     <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
     <symbol id="i-spark" viewBox="0 0 24 24"><path d="M3 17l5-5 4 4 8-9M15 7h5v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>

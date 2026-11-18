@@ -265,6 +265,7 @@ function durationBucket(t) {
 
 export const DIMENSIONS = [
   { id: 'session', label: 'Session', key: (t) => t.Killzone },
+  { id: 'model', label: 'Setup model', key: (t) => t.Model || null },
   { id: 'grade', label: 'Setup grade', key: (t) => t.Grade && t.Grade !== 'N/A' ? t.Grade : null },
   { id: 'emotion', label: 'Emotion before entry', key: (t) => t.EmotionBefore },
   { id: 'direction', label: 'Direction', key: (t) => t.Direction },
@@ -318,7 +319,8 @@ export function disciplineScore(trades, prep, settings = {}) {
   }
   const biasKnown = trades.map((t) => biasRelation(t, prep)).filter((r) => r === 'With daily bias' || r === 'Against daily bias');
   if (biasKnown.length) parts.push({ label: 'Traded with your bias', value: biasKnown.filter((r) => r === 'With daily bias').length / biasKnown.length });
-  parts.push({ label: 'Trades with no mistakes', value: trades.filter((t) => mistakesOf(t).length === 0).length / trades.length });
+  const reviewed = trades.filter((t) => !(t.imported && !t.reviewed));
+  if (reviewed.length) parts.push({ label: 'Trades with no mistakes', value: reviewed.filter((t) => mistakesOf(t).length === 0).length / reviewed.length });
   const calm = trades.filter((t) => t.EmotionBefore);
   if (calm.length) parts.push({ label: 'Calm or patient entries', value: calm.filter((t) => /calm|patient/i.test(t.EmotionBefore)).length / calm.length });
   const maxT = num(settings.maxTradesPerDay);

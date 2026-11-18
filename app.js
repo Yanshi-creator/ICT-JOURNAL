@@ -1,6 +1,8 @@
 import { createStore, newAccount, newId, DEFAULT_SETTINGS } from './store.js';
 import * as S from './stats.js';
 import { buildCoach, weeklyReview, guardrails, money, pct, plain } from './coach.js';
+import { FIELDS, parseCsv, guessMapping, rowsToTrades } from './importer.js';
+import { drawShareCard } from './sharecard.js';
 
 /* ================= helpers ================= */
 const $ = (s, r = document) => r.querySelector(s);
@@ -24,13 +26,34 @@ function toast(msg) {
   clearTimeout(toast._t); toast._t = setTimeout(() => { t.hidden = true; }, 2600);
 }
 
+/* ================= theme ================= */
+const THEMES = [
+  { id: 'dusk', name: 'Dusk', sw: ['#0f1220', '#ffad80', '#ff7fa6'] },
+  { id: 'sakura', name: 'Sakura', sw: ['#161118', '#ff9cc9', '#c9a2ff'] },
+  { id: 'lagoon', name: 'Lagoon', sw: ['#0a1619', '#5fd9e8', '#9be08a'] },
+  { id: 'lavender', name: 'Lavender', sw: ['#121020', '#b9a6ff', '#7fd6ff'] },
+  { id: 'brass', name: 'Brass', sw: ['#121419', '#d8a43a', '#d8a43a'] },
+  { id: 'daylight', name: 'Daylight', sw: ['#f6f3ef', '#e0603f', '#d94f86'] },
+];
+const tok = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function alpha(c, a) {
+  const m = /^#([0-9a-f]{6})$/i.exec(c); if (!m) return c;
+  const n = parseInt(m[1], 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`;
+}
+function applyTheme(id) {
+  const t = THEMES.some((x) => x.id === id) ? id : 'dusk';
+  if (t === 'dusk') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t;
+  try { localStorage.setItem('windage-theme', t); } catch (e) { /* private mode */ }
+  const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = tok('--bg') || '#0f1220';
+}
+
 /* ================= state ================= */
 const state = {
   user: null, accounts: [], activeAccountId: null, settings: { ...DEFAULT_SETTINGS }, profile: {},
   trades: [], prep: {},
   view: 'dashboard', params: {},
   cal: { y: new Date().getFullYear(), m: new Date().getMonth() },
-  filters: { q: '', session: '', dir: '', result: '', grade: '', tag: '', from: '', to: '' },
+  filters: { q: '', session: '', dir: '', result: '', grade: '', tag: '', model: '', from: '', to: '' },
   coachScope: 'account', coachDim: 'session', showAllLeaks: false,
   prepDate: todayIso(),
 };
@@ -117,6 +140,7 @@ async function start() {
       const act = $('#bootActions'); if (act) act.hidden = false;
       return;
     }
+    applyTheme(state.settings.theme);
     $('#boot').hidden = true; $('#app').hidden = false;
     $('#demoBanner').hidden = store.kind !== 'demo';
     wireApp();
@@ -153,7 +177,7 @@ function renderAccountSelect() {
   $('#accountSelect').innerHTML = state.accounts.map((a) => `<option value="${esc(a.id)}" ${a.id === state.activeAccountId ? 'selected' : ''}>${esc(a.name)}</option>`).join('');
 }
 
-const VIEWS = { dashboard: 'Dashboard', trades: 'Trades', coach: 'Coach', prep: 'Pre-market', accounts: 'Accounts', settings: 'Settings' };
+const VIEWS = { dashboard: 'Dashboard', trades: 'Trades', coach: 'Coach', playbook: 'Playbook', prep: 'Daily journal', accounts: 'Accounts', settings: 'Settings' };
 
 function route() {
   const [path, query] = location.hash.replace(/^#\/?/, '').split('?');
@@ -162,9 +186,13 @@ function route() {
   if (state.view === 'trades' && state.params.date) {
     state.filters = { ...state.filters, from: state.params.date, to: state.params.date };
   }
-  $$('[data-nav]').forEach((a) => { if (a.dataset.nav === state.view) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+  if (state.view === 'trades' && state.params.model !== undefined) state.filters = { ...state.filters, model: state.params.model };
+  $$('[data-nav]').forEach((a) => {
+    const on = a.dataset.nav === state.view || (state.view === 'playbook' && a.dataset.nav === 'coach' && a.closest('.bottom-nav'));
+    if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+  });
   $('#pageTitle').textContent = VIEWS[state.view];
-  document.title = `${VIEWS[state.view]} · Sniping Journal`;
+  document.title = `${VIEWS[state.view]} · Windage`;
   render();
   window.scrollTo(0, 0);
   if (state.params.log) { history.replaceState(null, '', `#/${state.view}`); openEditor(); }
@@ -174,17 +202,20 @@ function render() {
   charts.splice(0).forEach((c) => c.destroy());
   renderAccountSelect();
   const v = $('#view');
-  ({ dashboard: renderDashboard, trades: renderTrades, coach: renderCoach, prep: renderPrep, accounts: renderAccounts, settings: renderSettings })[state.view](v);
+  ({ dashboard: renderDashboard, trades: renderTrades, coach: renderCoach, playbook: renderPlaybook, prep: renderPrep, accounts: renderAccounts, settings: renderSettings })[state.view](v);
+  if (state.view === 'coach' || state.view === 'playbook') {
+    v.insertAdjacentHTML('afterbegin', `<nav class="subtabs mobile-only" aria-label="Coach sections"><a href="#/coach" ${state.view === 'coach' ? 'aria-current="page"' : ''}>Insights</a><a href="#/playbook" ${state.view === 'playbook' ? 'aria-current="page"' : ''}>Playbook</a></nav>`);
+  }
 }
 
 /* ================= charts ================= */
 function chart(canvas, config) {
   if (!window.Chart || !canvas) { if (canvas) canvas.replaceWith(Object.assign(document.createElement('p'), { className: 'muted', textContent: 'Charts are unavailable offline.' })); return; }
   Chart.defaults.font.family = "'IBM Plex Sans', system-ui, sans-serif";
-  Chart.defaults.color = '#8d94a5';
+  Chart.defaults.color = tok('--mute');
   const c = new Chart(canvas, config); charts.push(c); return c;
 }
-const gridColor = 'rgba(44, 49, 60, 0.8)';
+const gridColor = () => alpha(tok('--line'), 0.8);
 const moneyTick = (v) => (Math.abs(v) >= 1000 ? `$${(v / 1000).toFixed(v % 1000 ? 1 : 0)}k` : `$${v}`);
 
 /* ================= dashboard ================= */
@@ -252,7 +283,7 @@ function tradeRow(t) {
   const img = t.hasImage || t.ChartImage ? '<span class="tag img" title="Has chart screenshot"><svg><use href="#i-image"/></svg></span>' : '';
   return `<button class="trade-row" data-action="trade" data-id="${esc(t.id)}">
     <span class="when"><b>${esc(fmtDate(t.Date))}</b>${esc(t.Time && t.Time !== '--:--' ? t.Time : '')}</span>
-    <span class="what"><span class="sess">${esc(t.Killzone || 'Trade')}</span>${t.Instrument ? `<span class="muted">${esc(t.Instrument)}</span>` : ''}${dir}${grade}${mist}${img}</span>
+    <span class="what"><span class="sess">${esc(t.Killzone || 'Trade')}</span>${t.Instrument ? `<span class="muted">${esc(t.Instrument)}</span>` : ''}${dir}${t.Model ? `<span class="tag model">${esc(t.Model)}</span>` : ''}${grade}${mist}${t.imported && !t.reviewed ? '<span class="tag img" title="Imported. Open it to add your notes.">New</span>' : ''}${img}</span>
     <span class="r">${rTxt(r)}</span>
     <span class="pnl ${cls(p)}">${signed(p)}</span>
   </button>`;
@@ -324,8 +355,8 @@ function renderDashboard(v) {
     </div>` : `
     <section class="panel empty">
       <h3>${name ? `Welcome, ${name}. ` : ''}Log your first trade</h3>
-      <p>Your balance, drawdown and coaching fill in as you log. Fill in your pre-market prep first if you have a bias for today.</p>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center"><button class="btn btn-primary" data-action="log">Log trade</button><a class="btn btn-ghost" href="#/prep">Write today's prep</a></div>
+      <p>Your balance, drawdown and coaching fill in as you log. Write your plan for the day first if you have a bias.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center"><button class="btn btn-primary" data-action="log">Log trade</button><a class="btn btn-ghost" href="#/prep">Plan today</a></div>
     </section>`}`;
 
   if (!tr.length) return;
@@ -337,15 +368,15 @@ function renderDashboard(v) {
     data: {
       labels: series.map((p) => p.label),
       datasets: [
-        { label: 'Balance', data: series.map((p) => p.balance), borderColor: '#3cc283', backgroundColor: 'rgba(60,194,131,0.08)', fill: 'origin', borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, tension: 0.15 },
-        { label: 'Liquidation line', data: series.map((p) => p.threshold), borderColor: '#ee5d55', borderDash: [5, 4], borderWidth: 1.5, pointRadius: 0, fill: false, stepped: true },
-        ...(st.target > st.start ? [{ label: 'Target', data: series.map(() => st.target), borderColor: 'rgba(216,164,58,0.7)', borderDash: [2, 4], borderWidth: 1.5, pointRadius: 0, fill: false }] : []),
+        { label: 'Balance', data: series.map((p) => p.balance), borderColor: tok('--profit'), backgroundColor: alpha(tok('--profit'), 0.1), fill: 'origin', borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, tension: 0.15 },
+        { label: 'Liquidation line', data: series.map((p) => p.threshold), borderColor: tok('--loss'), borderDash: [5, 4], borderWidth: 1.5, pointRadius: 0, fill: false, stepped: true },
+        ...(st.target > st.start ? [{ label: 'Target', data: series.map(() => st.target), borderColor: alpha(tok('--accent'), 0.8), borderDash: [2, 4], borderWidth: 1.5, pointRadius: 0, fill: false }] : []),
       ],
     },
     options: {
       responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
       plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, boxHeight: 2, padding: 16 } }, tooltip: { callbacks: { label: (c) => ` ${c.dataset.label}: ${bal(c.parsed.y)}` } } },
-      scales: { x: { display: false }, y: { grid: { color: gridColor }, ticks: { callback: moneyTick } } },
+      scales: { x: { display: false }, y: { grid: { color: gridColor() }, ticks: { callback: moneyTick } } },
     },
   });
 }
@@ -361,9 +392,10 @@ function filteredTrades() {
     if (f.result === 'loss' && !(p < 0)) return false;
     if (f.grade && !(t.Grade || '').startsWith(f.grade)) return false;
     if (f.tag && !S.mistakesOf(t).includes(f.tag)) return false;
+    if (f.model && (f.model === '(none)' ? t.Model : t.Model !== f.model)) return false;
     if (f.from && t.Date < f.from) return false;
     if (f.to && t.Date > f.to) return false;
-    if (q && !`${t.Improvement || ''} ${t.Killzone || ''} ${t.Instrument || ''} ${S.mistakesOf(t).join(' ')}`.toLowerCase().includes(q)) return false;
+    if (q && !`${t.Improvement || ''} ${t.Model || ''} ${t.Killzone || ''} ${t.Instrument || ''} ${S.mistakesOf(t).join(' ')}`.toLowerCase().includes(q)) return false;
     return true;
   });
 }
@@ -372,6 +404,7 @@ function renderTrades(v) {
   const f = state.filters;
   const opts = (list, cur, all) => `<option value="">${all}</option>` + list.map((x) => `<option ${x === cur ? 'selected' : ''}>${esc(x)}</option>`).join('');
   const tags = [...new Set(acctTrades().flatMap(S.mistakesOf))].sort();
+  const models = [...new Set([...(state.settings.models || []), ...acctTrades().map((t) => t.Model).filter(Boolean)])];
   v.innerHTML = `
     <section class="panel">
       <form class="filters" id="filters" onsubmit="return false">
@@ -380,6 +413,7 @@ function renderTrades(v) {
         <label class="field"><span>Direction</span><select name="dir">${opts(['Long', 'Short'], f.dir, 'Both')}</select></label>
         <label class="field"><span>Result</span><select name="result"><option value="">All</option><option value="win" ${f.result === 'win' ? 'selected' : ''}>Winners</option><option value="loss" ${f.result === 'loss' ? 'selected' : ''}>Losers</option></select></label>
         <label class="field"><span>Grade</span><select name="grade">${opts(['A', 'B', 'C'], f.grade, 'Any grade')}</select></label>
+        <label class="field"><span>Model</span><select name="model">${opts(models, f.model, 'Any model')}<option value="(none)" ${f.model === '(none)' ? 'selected' : ''}>No model</option></select></label>
         <label class="field"><span>Mistake</span><select name="tag">${opts(tags, f.tag, 'Any')}</select></label>
         <label class="field"><span>From</span><input type="date" name="from" value="${esc(f.from)}"></label>
         <label class="field"><span>To</span><input type="date" name="to" value="${esc(f.to)}"></label>
@@ -396,7 +430,7 @@ function renderTrades(v) {
       </div>
       <div class="trade-list">${list.map(tradeRow).join('')}</div>`
       : `<div class="empty"><h3>${acctTrades().length ? 'No trades match these filters' : 'No trades in this account yet'}</h3>${active ? '<button class="btn btn-ghost" id="clearFilters">Clear filters</button>' : '<button class="btn btn-primary" data-action="log">Log trade</button>'}</div>`;
-    $('#clearFilters')?.addEventListener('click', () => { state.filters = { q: '', session: '', dir: '', result: '', grade: '', tag: '', from: '', to: '' }; if (location.hash.includes('?')) location.hash = '#/trades'; else render(); });
+    $('#clearFilters')?.addEventListener('click', () => { state.filters = { q: '', session: '', dir: '', result: '', grade: '', tag: '', model: '', from: '', to: '' }; if (location.hash.includes('?')) location.hash = '#/trades'; else render(); });
   };
   $('#filters').addEventListener('input', (e) => { state.filters[e.target.name] = e.target.value; paint(); });
   paint();
@@ -428,14 +462,14 @@ async function openDetail(id) {
   const rulesAll = t.RulesAll || [], rulesChecked = t.RulesChecked || [];
   const sh = openSheet(`${sheetHead(`${esc(fmtDate(t.Date, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }))}${t.Time && t.Time !== '--:--' ? ' at ' + esc(t.Time) : ''}`)}
     <div class="sheet-body">
-      <div class="detail-hero"><div><p class="muted">${esc(t.Killzone || '')} ${esc(t.Instrument || '')}</p><p class="big ${cls(p)}">${signed(p)}</p></div>
+      <div class="detail-hero"><div><p class="muted">${t.Model ? `<span class="tag model">${esc(t.Model)}</span> ` : ''}${esc(t.Killzone || '')} ${esc(t.Instrument || '')}</p><p class="big ${cls(p)}">${signed(p)}</p></div>
         <div style="text-align:right"><p class="num" style="font-size:22px;font-weight:600">${rTxt(r)}</p><p class="muted">${t.Grade && t.Grade !== 'N/A' ? `Grade ${esc(t.Grade)}` : ''}</p></div></div>
       <div class="detail-grid">
         <div>Direction<b>${esc(t.Direction || '–')}</b></div><div>Size<b>${esc(t.Contracts || '–')}</b></div><div>Time in trade<b>${t.Duration ? esc(t.Duration) + ' min' : '–'}</b></div>
         <div>Entry<b>${esc(t.Entry || '–')}</b></div><div>Stop<b>${esc(t.StopLoss || '–')}</b></div><div>Exit<b>${esc(t.Exit || '–')}</b></div>
         <div>Partials<b>${esc(t.Partials || 'None')}</b></div><div>Emotion<b>${esc(t.EmotionBefore || '–')}</b></div><div>News<b>${esc(t.NewsImpact || '–')}</b></div>
       </div>
-      ${prep ? `<div><p class="fs-title">Pre-market plan that day</p><div class="note-box">${esc(prep.bias)} bias${prep.dol ? `, targeting ${esc(prep.dol)}` : ''}${prep.htfArray ? `\nHTF: ${esc(prep.htfArray)}` : ''}\n<span class="${bias === 'Against daily bias' ? 'neg' : bias === 'With daily bias' ? 'pos' : 'muted'}">${esc(bias)}</span></div></div>` : ''}
+      ${hasPlan(prep) ? `<div><p class="fs-title">Pre-market plan that day</p><div class="note-box">${esc(prep.bias)} bias${prep.dol ? `, targeting ${esc(prep.dol)}` : ''}${prep.htfArray ? `\nHTF: ${esc(prep.htfArray)}` : ''}\n<span class="${bias === 'Against daily bias' ? 'neg' : bias === 'With daily bias' ? 'pos' : 'muted'}">${esc(bias)}</span></div></div>` : ''}
       ${rulesAll.length ? `<div><p class="fs-title">Checklist <span class="muted" style="font-weight:400">${rulesChecked.length} of ${rulesAll.length}</span></p><div class="checks">${rulesAll.map((x) => `<div class="check" style="cursor:default"><span class="${rulesChecked.includes(x) ? 'pos' : 'neg'}" style="width:18px">${rulesChecked.includes(x) ? '✓' : '✗'}</span><span>${esc(x)}</span></div>`).join('')}</div></div>` : t.Setups ? `<p class="muted">Checklist: ${esc(t.Setups)}</p>` : ''}
       ${S.mistakesOf(t).length ? `<div><p class="fs-title">Mistakes</p><div class="chips">${S.mistakesOf(t).map((m) => `<span class="tag mistake">${esc(m)}</span>`).join('')}</div>${!Array.isArray(t.Mistakes) ? '<p class="muted" style="font-size:13px;margin-top:6px">Picked up from your notes. Edit the trade to confirm.</p>' : ''}</div>` : ''}
       ${t.Improvement ? `<div><p class="fs-title">Reflection</p><div class="note-box">${esc(t.Improvement)}</div></div>` : ''}
@@ -443,11 +477,13 @@ async function openDetail(id) {
     </div>
     <div class="sheet-foot">
       <button class="btn btn-danger" id="dDelete">Delete</button>
-      <button class="btn btn-ghost" id="dCopy">Copy recap</button>
+      <button class="btn btn-ghost" id="dShare">Share card</button>
+      <button class="btn btn-ghost desktop-only" id="dCopy">Copy recap</button>
       <button class="btn btn-primary" id="dEdit">Edit</button>
     </div>`);
   $('#dEdit', sh).addEventListener('click', () => openEditor(t));
   $('#dCopy', sh).addEventListener('click', () => copyRecap(t));
+  $('#dShare', sh).addEventListener('click', () => openShareCard(t));
   $('#dDelete', sh).addEventListener('click', async () => {
     if (!confirm('Delete this trade? This can’t be undone.')) return;
     await store.deleteTrades([String(t.id)]);
@@ -470,6 +506,7 @@ function copyRecap(t) {
     '🎯 Snipe executed',
     `Account: ${a?.name || ''}`,
     `${t.Killzone || ''}${t.Instrument ? ' ' + t.Instrument : ''} ${t.Direction || ''}`.trim(),
+    t.Model ? `Model: ${t.Model}` : '',
     t.Grade && t.Grade !== 'N/A' ? `Setup grade: ${t.Grade}` : '',
     Number.isFinite(S.rOf(t)) ? `Realized: ${rTxt(S.rOf(t))}` : '',
     `P&L: ${signed(S.pnlOf(t))}`,
@@ -535,6 +572,7 @@ function openEditor(existing = null) {
   const rulesShown = existing?.RulesAll?.length ? [...new Set([...existing.RulesAll, ...checklist])] : checklist;
   const instruments = [...new Set([...(state.settings.instruments || []), d.Instrument].filter(Boolean))];
   const opt = (list, cur) => list.map((x) => `<option ${x === cur ? 'selected' : ''}>${esc(x)}</option>`).join('');
+  const models = [...new Set([...(state.settings.models || []), d.Model].filter(Boolean))];
 
   const sh = openSheet(`${sheetHead(existing ? 'Edit trade' : `Log trade in ${esc(acct().name)}`)}
     <form class="sheet-body" id="tradeForm" novalidate>
@@ -571,6 +609,10 @@ function openEditor(existing = null) {
       <fieldset class="fs"><legend>Context</legend>
         <label class="field"><span>News</span><select name="NewsImpact">${opt(NEWS, d.NewsImpact)}</select></label>
         <div class="field"><span>How you felt before entering</span><div class="chips" id="emoChips">${EMOTIONS.map((x) => `<button type="button" class="chip ${/FOMO|Anxious|Overconfident|Bored/.test(x) ? 'warn' : ''}" data-v="${esc(x)}" aria-pressed="${d.EmotionBefore === x}">${esc(x)}</button>`).join('')}</div></div>
+      </fieldset>
+
+      <fieldset class="fs"><legend>Setup model</legend>
+        <div class="chips" id="modelChips">${models.map((x) => `<button type="button" class="chip" data-v="${esc(x)}" aria-pressed="${d.Model === x}">${esc(x)}</button>`).join('') || '<p class="muted">Add your setup models in Settings.</p>'}</div>
       </fieldset>
 
       <fieldset class="fs"><div class="fs-title">Checklist <span class="grade-pill" id="gradePill"></span></div>
@@ -611,6 +653,7 @@ function openEditor(existing = null) {
     EmotionBefore: $('#emoChips [aria-pressed=true]', sh)?.dataset.v || '',
     RulesChecked: $$('input[name=rule]:checked', sh).map((x) => x.value),
     Mistakes: $$('#mistakeChips [aria-pressed=true]', sh).map((x) => x.dataset.v),
+    Model: $('#modelChips [aria-pressed=true]', sh)?.dataset.v || '',
     Improvement: val('Improvement'),
   });
 
@@ -638,6 +681,7 @@ function openEditor(existing = null) {
   $('#dirSeg', sh).addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; $$('#dirSeg button', sh).forEach((x) => x.setAttribute('aria-pressed', x === b)); recalc(); });
   $('#emoChips', sh).addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; $$('#emoChips button', sh).forEach((x) => x.setAttribute('aria-pressed', x === b)); });
   $('#mistakeChips', sh).addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') !== 'true'); });
+  $('#modelChips', sh).addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; const on = b.getAttribute('aria-pressed') !== 'true'; $$('#modelChips button', sh).forEach((x) => x.setAttribute('aria-pressed', x === b && on)); });
 
   // Screenshot
   const drop = $('#drop', sh), dropImg = $('#dropImg', sh), dropText = $('#dropText', sh), rm = $('#rmImg', sh);
@@ -686,6 +730,7 @@ function openEditor(existing = null) {
       RulesAll: rulesAll, Grade: grade,
       ChecklistScore: `${x.RulesChecked.length}/${rulesAll.length}`, Setups: `${x.RulesChecked.length}/${rulesAll.length} rules met`,
       hasImage: image === undefined ? !!(existing?.hasImage || ChartImage) : !!image,
+      ...(existing?.imported ? { reviewed: true } : {}),
       updatedAt: Date.now(), ...(existing ? {} : { createdAt: Date.now() }),
     };
     const btns = $$('.sheet-foot .btn', sh); btns.forEach((b) => { b.disabled = true; });
@@ -731,7 +776,7 @@ function renderCoach(v) {
   const maxDelta = Math.max(1, ...c.scenarios.map((s) => Math.abs(s.delta)));
   const dim = c.dims.find((d) => d.id === state.coachDim) || c.dims[0];
   const rules = S.ruleImpact(tr).filter((r) => r.followed.n + r.skipped.n >= 3);
-  const ring = c.discipline ? (c.discipline.score >= 80 ? 'var(--profit)' : c.discipline.score >= 60 ? 'var(--brass)' : 'var(--loss)') : 'var(--brass)';
+  const ring = c.discipline ? (c.discipline.score >= 80 ? 'var(--profit)' : c.discipline.score >= 60 ? 'var(--accent)' : 'var(--loss)') : 'var(--accent)';
   const change = (a, b, money_ = true) => (Number.isFinite(b) && w.previous.n ? `<small class="${cls(a - b)}">${a - b >= 0 ? '▲' : '▼'} ${money_ ? plain(a - b) : Math.abs(Math.round(a - b))} vs last week</small>` : '<small>No trades last week</small>');
 
   v.innerHTML = `
@@ -810,44 +855,110 @@ function renderCoach(v) {
 
   chart($('#dimChart'), {
     type: 'bar',
-    data: { labels: dim.groups.map((g) => g.key), datasets: [{ data: dim.groups.map((g) => Math.round(g.expectancy)), backgroundColor: dim.groups.map((g) => (g.expectancy >= 0 ? 'rgba(60,194,131,0.75)' : 'rgba(238,93,85,0.75)')), borderRadius: 4, maxBarThickness: 28 }] },
-    options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: (x) => ` ${signed(x.parsed.x)} per trade` } } }, scales: { x: { grid: { color: gridColor }, ticks: { callback: moneyTick } }, y: { grid: { display: false }, ticks: { autoSkip: false } } } },
+    data: { labels: dim.groups.map((g) => g.key), datasets: [{ data: dim.groups.map((g) => Math.round(g.expectancy)), backgroundColor: dim.groups.map((g) => (g.expectancy >= 0 ? alpha(tok('--profit'), 0.8) : alpha(tok('--loss'), 0.8))), borderRadius: 4, maxBarThickness: 28 }] },
+    options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: (x) => ` ${signed(x.parsed.x)} per trade` } } }, scales: { x: { grid: { color: gridColor() }, ticks: { callback: moneyTick } }, y: { grid: { display: false }, ticks: { autoSkip: false } } } },
   });
   const rd = S.rDistribution(tr);
   chart($('#rChart'), {
     type: 'bar',
-    data: { labels: rd.labels, datasets: [{ data: rd.counts, backgroundColor: rd.labels.map((_, i) => (i < 4 ? 'rgba(238,93,85,0.75)' : 'rgba(60,194,131,0.75)')), borderRadius: 4 }] },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true } }, y: { grid: { color: gridColor }, ticks: { precision: 0 } } } },
+    data: { labels: rd.labels, datasets: [{ data: rd.counts, backgroundColor: rd.labels.map((_, i) => (i < 4 ? alpha(tok('--loss'), 0.8) : alpha(tok('--profit'), 0.8))), borderRadius: 4 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true } }, y: { grid: { color: gridColor() }, ticks: { precision: 0 } } } },
   });
 }
 
-/* ================= prep ================= */
+/* ================= playbook ================= */
+function renderPlaybook(v) {
+  const tr = acctTrades();
+  const models = state.settings.models || [];
+  const groups = models.map((m) => ({ key: m, trades: tr.filter((t) => t.Model === m) }));
+  tr.forEach((t) => { if (t.Model && !models.includes(t.Model) && !groups.some((g) => g.key === t.Model)) groups.push({ key: t.Model, trades: tr.filter((x) => x.Model === t.Model) }); });
+  const untagged = tr.filter((t) => !t.Model);
+  const traded = groups.filter((g) => g.trades.length).map((g) => ({ ...g, c: S.coreStats(g.trades) })).sort((a, b) => b.c.net - a.c.net);
+  const idle = groups.filter((g) => !g.trades.length);
+  const best = traded.find((g) => g.c.n >= 5 && g.c.net > 0);
+  const worst = [...traded].reverse().find((g) => g.c.n >= 5 && g.c.net < 0);
+  const pfTxt = (pf) => (pf === Infinity ? '∞' : pf.toFixed(2));
+  const top = (list, fn) => { const m = S.groupBy(list, fn).filter((x) => x.n >= 2).sort((a, b) => b.net - a.net); return m[0]; };
+  const mostMistake = (list) => { const c = {}; list.flatMap(S.mistakesOf).forEach((m) => { c[m] = (c[m] || 0) + 1; }); return Object.entries(c).sort((a, b) => b[1] - a[1])[0]; };
+
+  const card = (g) => {
+    const c = g.c, last = S.sortTrades(g.trades).slice(-16);
+    const sess = top(g.trades, (t) => t.Killzone), mis = mostMistake(g.trades);
+    const flag = g === best ? '<span class="tag long">Your best edge</span>' : g === worst ? '<span class="tag short">Costing you</span>' : c.n < 5 ? '<span class="badge">Small sample</span>' : '';
+    return `<section class="panel play-card">
+      <header><h3>${esc(g.key)}</h3>${flag}</header>
+      <div><p class="play-net num ${cls(c.net)}">${signed(c.net)}</p><small class="muted">${c.n} trade${c.n === 1 ? '' : 's'}</small></div>
+      <div class="play-figs">
+        <div>Win rate<b>${pct(c.winRate)}</b></div>
+        <div>Avg R<b class="${cls(c.avgR)}">${rTxt(c.avgR)}</b></div>
+        <div>Per trade<b class="${cls(c.expectancy)}">${signed(c.expectancy)}</b></div>
+        <div>Profit factor<b>${pfTxt(c.profitFactor)}</b></div>
+      </div>
+      <div class="play-strip" aria-label="Last ${last.length} results, oldest first">${last.map((t) => `<i class="${S.pnlOf(t) > 0 ? 'w' : S.pnlOf(t) < 0 ? 'l' : 'b'}" title="${esc(fmtDate(t.Date))}: ${esc(signed(S.pnlOf(t)))}"></i>`).join('')}</div>
+      <p class="play-note">${sess ? `Best session: <b>${esc(sess.key)}</b>` : 'Not enough trades per session yet'}${mis ? `<br>Most common mistake: <b>${esc(mis[0])}</b> (${mis[1]}×)` : '<br>No mistakes tagged'}</p>
+      <a class="play-link" href="#/trades?model=${encodeURIComponent(g.key)}">See these trades</a>
+    </section>`;
+  };
+
+  v.innerHTML = `
+    <section class="panel play-hero">
+      <div>
+        <h2>${best ? `${esc(best.key)} has made you the most: ${signed(best.c.net)} over ${best.c.n} trades.` : traded.length ? 'Tag a few more trades to see which setup pays.' : 'Tag each trade with the setup you took.'}</h2>
+        <p>${worst ? `${esc(worst.key)} has lost you ${bal(Math.abs(worst.c.net))} over ${worst.c.n} trades. Stop taking it until you've studied what's going wrong.` : 'Each card shows what one setup has actually made you, so you can trade more of what works.'}</p>
+      </div>
+      <a class="btn btn-ghost" href="#/settings">Edit models</a>
+    </section>
+    ${traded.length ? `<div class="play-grid">${traded.map(card).join('')}</div>` : ''}
+    ${untagged.length ? `<section class="panel play-untagged"><div><h3>${untagged.length} trade${untagged.length === 1 ? '' : 's'} without a model</h3><p class="muted">Open a trade, tap Edit, and pick its setup model so it counts here.</p></div><a class="btn btn-ghost" href="#/trades?model=(none)">Tag them</a></section>` : ''}
+    ${idle.length ? `<p class="muted" style="font-size:14px">Not traded yet: ${idle.map((g) => esc(g.key)).join(', ')}</p>` : ''}`;
+}
+
+/* ================= daily journal (plan + review) ================= */
+const hasPlan = (p) => !!(p && (p.htfArray || p.dol || p.notes || p.news || (p.bias && p.planSaved !== false)));
 function renderPrep(v) {
   const date = state.prepDate, p = state.prep[date] || {};
   const days = Object.keys(state.prep).sort().reverse().slice(0, 20);
-  const daily = S.dailyPnl(state.trades.filter((t) => t.accountId === state.activeAccountId));
-  const withPrep = Object.entries(daily).filter(([d]) => state.prep[d]), without = Object.entries(daily).filter(([d]) => !state.prep[d]);
+  const daily = S.dailyPnl(acctTrades());
+  const withPrep = Object.entries(daily).filter(([d]) => hasPlan(state.prep[d])), without = Object.entries(daily).filter(([d]) => !hasPlan(state.prep[d]));
   const avg = (l) => (l.length ? l.reduce((s, [, x]) => s + x.pnl, 0) / l.length : NaN);
+  const today = acctTrades().filter((t) => t.Date === date), todayNet = today.reduce((s, t) => s + S.pnlOf(t), 0);
+  const rated = Object.entries(daily).filter(([d]) => state.prep[d]?.rating);
+  const byRating = [1, 2, 3, 4, 5].map((r) => { const l = rated.filter(([d]) => state.prep[d].rating === r); return { r, n: l.length, avg: avg(l) }; }).filter((x) => x.n);
+  const stars = (n) => (n ? '★'.repeat(n) + '☆'.repeat(5 - n) : '');
   v.innerHTML = `
     <div class="prep-grid">
-      <section class="panel">
-        <div class="panel-head"><h2>Plan for ${esc(fmtDate(date, { weekday: 'long', month: 'long', day: 'numeric' }))}</h2></div>
-        <form class="prep-form" id="prepForm">
-          <label class="field"><span>Date</span><input type="date" name="date" value="${esc(date)}"></label>
-          <div class="field"><span>Daily bias</span><div class="seg bias-seg" id="biasSeg">${['Bullish', 'Bearish', 'Consolidation / Neutral'].map((x) => `<button type="button" data-v="${x}" aria-pressed="${(p.bias || 'Bullish') === x}">${x === 'Consolidation / Neutral' ? 'Neutral' : x}</button>`).join('')}</div></div>
-          <label class="field"><span>Higher-timeframe PD array</span><input name="htfArray" value="${esc(p.htfArray)}" placeholder="e.g. 4H bullish FVG tapped, daily order block"></label>
-          <label class="field"><span>Draw on liquidity / targets</span><input name="dol" value="${esc(p.dol)}" placeholder="e.g. buy-side at 19950, previous day high"></label>
-          <label class="field"><span>High-impact news</span><input name="news" value="${esc(p.news)}" placeholder="e.g. 8:30 CPI, flat 8:25 to 8:35"></label>
-          <label class="field"><span>Game plan</span><textarea name="notes" rows="5" placeholder="e.g. Wait for displacement after 9:45. One contract if it's choppy.">${esc(p.notes)}</textarea></label>
-          <button class="btn btn-primary" type="submit">Save plan</button>
-        </form>
-      </section>
-      <div style="display:flex;flex-direction:column;gap:20px">
+      <div style="display:flex;flex-direction:column;gap:20px;min-width:0">
+        <section class="panel">
+          <div class="panel-head"><h2>Plan for ${esc(fmtDate(date, { weekday: 'long', month: 'long', day: 'numeric' }))}</h2><span class="sub">Before the open</span></div>
+          <form class="prep-form" id="prepForm">
+            <label class="field"><span>Date</span><input type="date" name="date" value="${esc(date)}"></label>
+            <div class="field"><span>Daily bias</span><div class="seg bias-seg" id="biasSeg">${['Bullish', 'Bearish', 'Consolidation / Neutral'].map((x) => `<button type="button" data-v="${x}" aria-pressed="${(p.bias || 'Bullish') === x}">${x === 'Consolidation / Neutral' ? 'Neutral' : x}</button>`).join('')}</div></div>
+            <label class="field"><span>Higher-timeframe PD array</span><input name="htfArray" value="${esc(p.htfArray)}" placeholder="e.g. 4H bullish FVG tapped, daily order block"></label>
+            <label class="field"><span>Draw on liquidity / targets</span><input name="dol" value="${esc(p.dol)}" placeholder="e.g. buy-side at 19950, previous day high"></label>
+            <label class="field"><span>High-impact news</span><input name="news" value="${esc(p.news)}" placeholder="e.g. 8:30 CPI, flat 8:25 to 8:35"></label>
+            <label class="field"><span>Game plan</span><textarea name="notes" rows="4" placeholder="e.g. Wait for displacement after 9:45. One contract if it's choppy.">${esc(p.notes)}</textarea></label>
+            <button class="btn btn-primary" type="submit" style="align-self:flex-start">Save plan</button>
+          </form>
+        </section>
+        <section class="panel">
+          <div class="panel-head"><h2>End-of-day review</h2><span class="sub">${today.length ? `${today.length} trade${today.length === 1 ? '' : 's'}, <span class="num ${cls(todayNet)}">${signed(todayNet)}</span>` : 'No trades this day'}</span></div>
+          <form class="prep-form" id="reviewForm">
+            <div class="field"><span>How well did you follow your plan?</span>
+              <div class="rating" id="rating" role="radiogroup" aria-label="Rating out of 5">${[1, 2, 3, 4, 5].map((n) => `<button type="button" role="radio" data-v="${n}" aria-checked="${p.rating === n}" aria-label="${n} out of 5" class="${(p.rating || 0) >= n ? 'on' : ''}">★</button>`).join('')}<span class="rating-word" id="ratingWord">${['Tap to rate', 'Off plan', 'Shaky', 'Okay', 'Good', 'Followed it exactly'][p.rating || 0]}</span></div></div>
+            <label class="field"><span>What went well</span><textarea name="wentWell" rows="2" placeholder="e.g. Waited for the 9:50 displacement and held to target.">${esc(p.wentWell)}</textarea></label>
+            <label class="field"><span>Fix tomorrow</span><textarea name="lesson" rows="2" placeholder="e.g. No second trade after a win.">${esc(p.lesson)}</textarea></label>
+            <button class="btn btn-primary" type="submit" style="align-self:flex-start">Save review</button>
+          </form>
+        </section>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:20px;min-width:0">
         ${withPrep.length && without.length ? `<section class="panel"><div class="panel-head"><h2>Does prep pay?</h2></div>
           <div class="grid-2"><div><span class="muted" style="font-size:13px">Days with a plan</span><p class="num ${cls(avg(withPrep))}" style="font-size:24px;font-weight:600">${signed(avg(withPrep))}</p><small class="muted">${withPrep.length} days, average</small></div>
           <div><span class="muted" style="font-size:13px">Days without</span><p class="num ${cls(avg(without))}" style="font-size:24px;font-weight:600">${signed(avg(without))}</p><small class="muted">${without.length} days, average</small></div></div></section>` : ''}
-        <section class="panel"><div class="panel-head"><h2>Recent plans</h2></div>
-          ${days.length ? days.map((d) => { const x = state.prep[d], r = daily[d]; return `<div class="prep-day" data-date="${d}"><span class="dt">${esc(fmtDate(d, { weekday: 'short', month: 'short', day: 'numeric' }))} <span class="${x.bias === 'Bullish' ? 'pos' : x.bias === 'Bearish' ? 'neg' : 'muted'}">${esc(x.bias === 'Consolidation / Neutral' ? 'Neutral' : x.bias)}</span></span><span class="num ${r ? cls(r.pnl) : 'muted'}">${r ? signed(r.pnl) : 'No trades'}</span><span class="sm">${esc([x.dol, x.htfArray].filter(Boolean).join(', ') || x.notes || '')}</span></div>`; }).join('') : '<p class="muted">Your saved plans show up here with how each day went.</p>'}
+        ${byRating.length >= 2 ? `<section class="panel"><div class="panel-head"><h2>Discipline vs P&amp;L</h2><span class="sub">Average day by your rating</span></div>
+          <div class="rate-rows">${byRating.map((x) => `<div><span class="stars">${stars(x.r)}</span><span class="muted">${x.n} day${x.n === 1 ? '' : 's'}</span><b class="num ${cls(x.avg)}">${signed(x.avg)}</b></div>`).join('')}</div></section>` : ''}
+        <section class="panel"><div class="panel-head"><h2>Recent days</h2></div>
+          ${days.length ? days.map((d) => { const x = state.prep[d], r = daily[d]; return `<div class="prep-day" data-date="${d}"><span class="dt">${esc(fmtDate(d, { weekday: 'short', month: 'short', day: 'numeric' }))} ${hasPlan(x) ? `<span class="${x.bias === 'Bullish' ? 'pos' : x.bias === 'Bearish' ? 'neg' : 'muted'}">${esc(x.bias === 'Consolidation / Neutral' ? 'Neutral' : x.bias)}</span>` : ''} ${x.rating ? `<span class="stars sm">${stars(x.rating)}</span>` : ''}</span><span class="num ${r ? cls(r.pnl) : 'muted'}">${r ? signed(r.pnl) : 'No trades'}</span><span class="sm">${esc(x.lesson ? 'Fix: ' + x.lesson : [x.dol, x.htfArray].filter(Boolean).join(', ') || x.notes || '')}</span></div>`; }).join('') : '<p class="muted">Your plans and reviews show up here with how each day went.</p>'}
         </section>
       </div>
     </div>`;
@@ -855,12 +966,142 @@ function renderPrep(v) {
   form.elements.date.addEventListener('change', (e) => { state.prepDate = e.target.value || todayIso(); render(); });
   $('#biasSeg').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) $$('#biasSeg button').forEach((x) => x.setAttribute('aria-pressed', x === b)); });
   $$('.prep-day').forEach((el) => el.addEventListener('click', () => { state.prepDate = el.dataset.date; render(); }));
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const data = { bias: $('#biasSeg [aria-pressed=true]').dataset.v, htfArray: form.elements.htfArray.value, dol: form.elements.dol.value, news: form.elements.news.value, notes: form.elements.notes.value, updatedAt: Date.now() };
+  const persist = (patch, msg) => {
+    const data = { ...(state.prep[date] || {}), ...patch, updatedAt: Date.now() };
     state.prep[date] = data;
     store.savePrep(date, data).catch((er) => toast('Couldn’t sync: ' + er.message));
-    toast('Plan saved'); render();
+    toast(msg); render();
+  };
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    persist({ bias: $('#biasSeg [aria-pressed=true]').dataset.v, htfArray: form.elements.htfArray.value, dol: form.elements.dol.value, news: form.elements.news.value, notes: form.elements.notes.value, planSaved: true }, 'Plan saved');
+  });
+  let rating = p.rating || 0;
+  const words = ['Tap to rate', 'Off plan', 'Shaky', 'Okay', 'Good', 'Followed it exactly'];
+  $('#rating').addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    rating = Number(b.dataset.v);
+    $$('#rating button').forEach((x) => { x.classList.toggle('on', Number(x.dataset.v) <= rating); x.setAttribute('aria-checked', Number(x.dataset.v) === rating); });
+    $('#ratingWord').textContent = words[rating];
+  });
+  const rf = $('#reviewForm');
+  rf.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const patch = { rating: rating || null, wentWell: rf.elements.wentWell.value, lesson: rf.elements.lesson.value };
+    if (!state.prep[date]?.bias) patch.planSaved = false;
+    persist(patch, 'Review saved');
+  });
+}
+
+/* ================= share card ================= */
+function themeColours() {
+  const c = (n) => tok(n);
+  return {
+    bg: c('--bg'), surface: c('--surface'), ink: c('--ink'), ink2: c('--ink-2'), mute: c('--mute'), line: alpha(c('--line'), 1),
+    accent: c('--accent'), accent2: c('--accent-2'), accentInk: c('--accent-ink'), profit: c('--profit'), loss: c('--loss'),
+    surfaceA: alpha(c('--surface-2'), 0.85),
+    accentGlow: alpha(c('--accent'), 0.22), accent2Glow: alpha(c('--accent-2'), 0.16),
+    profitGlow: alpha(c('--profit'), 0.14), lossGlow: alpha(c('--loss'), 0.14),
+  };
+}
+function openShareCard(t) {
+  let showMoney = true;
+  const sh = openSheet(`${sheetHead('Share card')}
+    <div class="sheet-body">
+      <canvas class="share-canvas" id="shareCanvas" aria-label="Trade card preview"></canvas>
+      <label class="check" style="padding:0"><input type="checkbox" id="shareMoney" checked><span>Show dollar amounts</span></label>
+      <p class="help">The card uses your current colour theme. Change it in Settings.</p>
+    </div>
+    <div class="sheet-foot">
+      <button class="btn btn-ghost" id="shareSave">Save image</button>
+      <button class="btn btn-primary" id="shareSend">Share</button>
+    </div>`);
+  const canvas = $('#shareCanvas', sh);
+  const draw = () => {
+    const p = S.pnlOf(t), r = S.rOf(t), a = state.accounts.find((x) => x.id === t.accountId);
+    const hasR = Number.isFinite(r);
+    const big = showMoney ? signed(p) : hasR ? rTxt(r) : (p > 0 ? 'Win' : p < 0 ? 'Loss' : 'Breakeven');
+    const rows = [
+      hasR && showMoney ? ['Realized', rTxt(r), r > 0 ? 'pos' : r < 0 ? 'neg' : ''] : ['Session', t.Killzone || '–'],
+      ['Grade', t.Grade && t.Grade !== 'N/A' ? t.Grade : '–'],
+      ['Checklist', t.ChecklistScore || '–'],
+      ['Entry', t.Entry || '–'], ['Exit', t.Exit || '–'], ['Time in trade', t.Duration ? `${t.Duration} min` : '–'],
+    ];
+    drawShareCard(canvas, {
+      date: fmtDate(t.Date, { month: 'short', day: 'numeric', year: 'numeric' }),
+      headline: [t.Instrument, t.Direction, t.Model].filter(Boolean).join(' · ') || 'Trade',
+      sub: [t.Killzone, t.Time && t.Time !== '--:--' ? t.Time : '', a?.firm && a.firm !== 'Personal' ? a.firm : ''].filter(Boolean).join(' · '),
+      big, bigLabel: showMoney ? 'Net P&L' : hasR ? 'Realized R' : 'Result',
+      tone: p > 0 ? 'pos' : p < 0 ? 'neg' : '', rows,
+      footer: state.profile?.handle ? `@${state.profile.handle.replace(/^@/, '')}` : (state.profile?.displayName || 'windage journal'),
+    }, themeColours(), { num: "'IBM Plex Sans Condensed', 'IBM Plex Sans', system-ui, sans-serif", body: "'IBM Plex Sans', system-ui, sans-serif" });
+  };
+  const blob = () => new Promise((res) => canvas.toBlob(res, 'image/png'));
+  const name = `windage-${t.Date}-${(t.Instrument || 'trade').toLowerCase()}.png`;
+  $('#shareMoney', sh).addEventListener('change', (e) => { showMoney = e.target.checked; draw(); });
+  $('#shareSave', sh).addEventListener('click', async () => download(await blob(), name));
+  $('#shareSend', sh).addEventListener('click', async () => {
+    const file = new File([await blob()], name, { type: 'image/png' });
+    if (navigator.canShare?.({ files: [file] })) { try { await navigator.share({ files: [file] }); } catch (e) { /* cancelled */ } }
+    else { download(file, name); toast('Saved. Your browser can’t share images directly.'); }
+  });
+  (document.fonts?.ready || Promise.resolve()).then(draw);
+  draw();
+}
+
+/* ================= broker import ================= */
+function openImport() {
+  let parsed = null, map = {};
+  const sh = openSheet(`${sheetHead('Import trades from your broker')}
+    <div class="sheet-body" id="impBody">
+      <p class="help">Export your trade history as a CSV, one row per trade. Works with Tradovate (Performance report), NinjaTrader (Trades tab), TopstepX, Rithmic and most other platforms.</p>
+      <label class="drop" style="cursor:pointer"><svg><use href="#i-list"/></svg><span>Choose a CSV file</span><input type="file" id="impFile" accept=".csv,text/csv,.txt" hidden></label>
+      <div id="impStep"></div>
+    </div>
+    <div class="sheet-foot"><button class="btn btn-primary" id="impGo" disabled>Import</button></div>`);
+  const step = $('#impStep', sh), go = $('#impGo', sh);
+  const fieldSelect = (f) => `<label class="field"><span>${esc(f.label)}${f.required ? ' *' : ''}</span><select data-field="${f.id}"><option value="">Not in file</option>${parsed.headers.map((h) => `<option ${map[f.id] === h ? 'selected' : ''}>${esc(h)}</option>`).join('')}</select></label>`;
+  const preview = () => {
+    const known = [...new Set([...(state.settings.instruments || []), ...Object.keys(POINT_VALUE)])];
+    const res = rowsToTrades(parsed.rows, { map, known, subtractFees: $('#impFees', sh)?.checked ?? true, sessionFor });
+    const existing = new Set(state.trades.map((t) => String(t.id)));
+    const fresh = res.trades.filter((t) => !existing.has(t.id));
+    const missing = FIELDS.filter((f) => f.required && !map[f.id] && !(f.id === 'entryTime' && (map.buyTime || map.sellTime)));
+    $('#impPreview', sh).innerHTML = missing.length
+      ? `<p class="form-error">Pick the column for ${missing.map((f) => f.label).join(', ')}.</p>`
+      : `<p class="help"><b>${fresh.length}</b> new trade${fresh.length === 1 ? '' : 's'} ready${res.trades.length - fresh.length ? `, ${res.trades.length - fresh.length} already in your journal (skipped)` : ''}${res.skipped.length ? `, ${res.skipped.length} row${res.skipped.length === 1 ? '' : 's'} couldn’t be read (line ${res.skipped.slice(0, 3).map((x) => x.line).join(', ')}${res.skipped.length > 3 ? '…' : ''})` : ''}.</p>
+        <div class="table-scroll"><table class="bucket-table imp-table"><thead><tr><th>Date</th><th>Time</th><th>Symbol</th><th>Side</th><th>Qty</th><th>Entry</th><th>Exit</th><th>P&amp;L</th></tr></thead><tbody>
+        ${res.trades.slice(0, 6).map((t) => `<tr><td>${esc(t.Date)}</td><td>${esc(t.Time)}</td><td>${esc(t.Instrument)}</td><td>${esc(t.Direction)}</td><td>${esc(t.Contracts)}</td><td>${esc(t.Entry)}</td><td>${esc(t.Exit)}</td><td class="${cls(t.PNL)}">${signed(t.PNL)}</td></tr>`).join('')}</tbody></table></div>`;
+    go.disabled = !!missing.length || !fresh.length;
+    go.textContent = fresh.length ? `Import ${fresh.length} trade${fresh.length === 1 ? '' : 's'} into ${acct().name}` : 'Import';
+    return fresh;
+  };
+  $('#impFile', sh).addEventListener('change', async (e) => {
+    const file = e.target.files[0]; if (!file) return;
+    parsed = parseCsv(await file.text());
+    if (!parsed.rows.length) { step.innerHTML = '<p class="form-error">That file has no rows. Check you exported trades, not an empty report.</p>'; return; }
+    map = guessMapping(parsed.headers);
+    step.innerHTML = `<p class="fs-title">${esc(file.name)} <span class="muted" style="font-weight:400">${parsed.rows.length} rows</span></p>
+      <details class="imp-map" ${FIELDS.some((f) => f.required && !map[f.id] && !(f.id === 'entryTime' && map.buyTime)) ? 'open' : ''}><summary>Columns we matched (check or change)</summary>
+        <div class="grid-3" style="margin-top:12px">${FIELDS.map(fieldSelect).join('')}</div></details>
+      <label class="check" style="padding:0"><input type="checkbox" id="impFees" checked><span>Subtract fees and commission from P&amp;L</span></label>
+      <div id="impPreview"></div>
+      <p class="help">Imported trades get the session from their entry time. Open each one later to add your model, checklist and notes.</p>`;
+    step.addEventListener('change', (ev) => { const sel = ev.target.closest('[data-field]'); if (sel) map[sel.dataset.field] = sel.value; preview(); });
+    preview();
+  });
+  go.addEventListener('click', async () => {
+    const fresh = preview(); if (!fresh.length) return;
+    go.disabled = true; go.textContent = 'Importing…';
+    try {
+      for (let i = 0; i < fresh.length; i += 10) {
+        const chunk = fresh.slice(i, i + 10).map((t) => ({ ...t, accountId: state.activeAccountId, createdAt: Date.now(), updatedAt: Date.now() }));
+        await Promise.all(chunk.map((t) => store.saveTrade(t)));
+        state.trades.push(...chunk);
+        go.textContent = `Importing… ${Math.min(i + 10, fresh.length)} of ${fresh.length}`;
+      }
+      closeSheet(); toast(`Imported ${fresh.length} trades`); location.hash = '#/trades';
+    } catch (er) { go.disabled = false; go.textContent = 'Try again'; toast('Import stopped: ' + er.message); }
   });
 }
 
@@ -942,7 +1183,12 @@ function renderSettings(v) {
   const s = state.settings;
   const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.navigator.standalone;
   const installed = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+  const cur = THEMES.some((x) => x.id === s.theme) ? s.theme : 'dusk';
   v.innerHTML = `
+    <section class="panel">
+      <div class="panel-head"><h2>Colours</h2><span class="sub">Saved to your account, so every device matches</span></div>
+      <div class="themes" role="radiogroup" aria-label="Colour theme">${THEMES.map((t) => `<button class="theme-opt" role="radio" aria-checked="${t.id === cur}" data-theme-id="${t.id}"><span class="theme-sw" style="background:${t.sw[0]}"><i style="background:${t.sw[1]}"></i><i style="background:${t.sw[2]}"></i></span>${t.name}</button>`).join('')}</div>
+    </section>
     <div class="row-even">
       <section class="panel">
         <div class="panel-head"><h2>Checklist rules</h2></div>
@@ -950,6 +1196,14 @@ function renderSettings(v) {
         <div class="form-stack" id="rules">${(s.checklist || []).map((r) => `<div class="rule-row"><input value="${esc(r)}" aria-label="Rule"><button class="icon-btn" data-rm aria-label="Remove rule"><svg><use href="#i-x"/></svg></button></div>`).join('')}</div>
         <div style="display:flex;gap:10px;margin-top:14px"><button class="btn btn-ghost" id="addRule">Add rule</button><button class="btn btn-primary" id="saveRules">Save rules</button></div>
       </section>
+      <section class="panel">
+        <div class="panel-head"><h2>Setup models</h2></div>
+        <p class="help" style="margin-bottom:14px">The setups you trade. You tag each trade with one, and the Playbook shows what each model actually pays.</p>
+        <div class="form-stack" id="models">${(s.models || []).map((r) => `<div class="rule-row"><input value="${esc(r)}" aria-label="Model"><button class="icon-btn" data-rm aria-label="Remove model"><svg><use href="#i-x"/></svg></button></div>`).join('')}</div>
+        <div style="display:flex;gap:10px;margin-top:14px"><button class="btn btn-ghost" id="addModel">Add model</button><button class="btn btn-primary" id="saveModels">Save models</button></div>
+      </section>
+    </div>
+    <div class="row-even">
       <section class="panel">
         <div class="panel-head"><h2>Guardrails</h2></div>
         <p class="help" style="margin-bottom:14px">The dashboard warns you when you hit these, and the coach scores you against them.</p>
@@ -959,15 +1213,18 @@ function renderSettings(v) {
             <label class="field"><span>Daily loss limit ($)</span><input type="number" min="0" name="dailyLossLimit" value="${esc(s.dailyLossLimit ?? '')}"></label>
           </div>
           <label class="field"><span>Instruments you trade</span><input name="instruments" value="${esc((s.instruments || []).join(', '))}"><small>Comma separated. NQ, MNQ, ES, MES, YM, RTY, CL and GC also estimate P&amp;L from your prices.</small></label>
-          <label class="field"><span>Your name</span><input name="displayName" value="${esc(state.profile?.displayName || '')}"></label>
+          <div class="grid-2">
+            <label class="field"><span>Your name</span><input name="displayName" value="${esc(state.profile?.displayName || '')}"></label>
+            <label class="field"><span>Instagram handle</span><input name="handle" value="${esc(state.profile?.handle || '')}" placeholder="yourname"><small>Shown on share cards.</small></label>
+          </div>
           <button class="btn btn-primary" type="submit" style="align-self:flex-start">Save</button>
         </form>
       </section>
-    </div>
     <div class="row-even">
       <section class="panel">
         <div class="panel-head"><h2>Your data</h2></div>
         <div class="form-stack">
+          <button class="btn btn-primary" id="csvBtn">Import trades from your broker (CSV)</button>
           <button class="btn btn-ghost" id="xlsxBtn">Export this account to Excel</button>
           <button class="btn btn-ghost" id="jsonBtn">Download a full backup</button>
           <label class="btn btn-ghost" style="cursor:pointer">Restore from a backup file<input type="file" id="importIn" accept="application/json,.json" hidden></label>
@@ -977,7 +1234,7 @@ function renderSettings(v) {
       <section class="panel">
         <div class="panel-head"><h2>App</h2></div>
         <div class="form-stack">
-          ${installed ? '<p class="help">Installed. You can open Sniping Journal from your home screen or dock.</p>'
+          ${installed ? '<p class="help">Installed. You can open Windage from your home screen or dock.</p>'
             : installPrompt ? '<button class="btn btn-primary" id="installBtn">Install on this device</button>'
             : ios ? '<p class="help">To install on iPhone or iPad, open this page in Safari, tap the Share button, then “Add to Home Screen”.</p>'
             : '<p class="help">To install, open the browser menu and choose “Install app” or “Add to Home Screen”.</p>'}
@@ -999,19 +1256,31 @@ function renderSettings(v) {
     const n = (k) => (f.elements[k].value === '' ? null : Number(f.elements[k].value));
     state.settings.maxTradesPerDay = n('maxTradesPerDay'); state.settings.dailyLossLimit = n('dailyLossLimit');
     state.settings.instruments = f.elements.instruments.value.split(',').map((x) => x.trim().toUpperCase()).filter(Boolean);
-    state.profile = { ...state.profile, displayName: f.elements.displayName.value.trim() };
+    state.profile = { ...state.profile, displayName: f.elements.displayName.value.trim(), handle: f.elements.handle.value.trim().replace(/^@/, '') };
     saveMeta({ settings: state.settings, profile: state.profile }); toast('Settings saved');
   });
   $('#xlsxBtn').addEventListener('click', exportExcel);
+  $('#csvBtn').addEventListener('click', openImport);
+  $$('.theme-opt').forEach((b) => b.addEventListener('click', () => {
+    state.settings.theme = b.dataset.themeId; applyTheme(state.settings.theme);
+    saveMeta({ settings: state.settings }); render();
+  }));
+  const models = $('#models');
+  models.addEventListener('click', (e) => { if (e.target.closest('[data-rm]')) e.target.closest('.rule-row').remove(); });
+  $('#addModel').addEventListener('click', () => { models.insertAdjacentHTML('beforeend', '<div class="rule-row"><input placeholder="e.g. London Raid" aria-label="Model"><button class="icon-btn" data-rm aria-label="Remove model"><svg><use href="#i-x"/></svg></button></div>'); $('.rule-row:last-child input', models).focus(); });
+  $('#saveModels').addEventListener('click', () => {
+    state.settings.models = [...new Set($$('input', models).map((i) => i.value.trim()).filter(Boolean))];
+    saveMeta({ settings: state.settings }); toast('Models saved'); render();
+  });
   $('#jsonBtn').addEventListener('click', () => {
-    const data = { app: 'sniping-journal', version: 2, exportedAt: new Date().toISOString(), accounts: state.accounts, settings: state.settings, prep: state.prep, trades: state.trades.map(({ ChartImage, ...t }) => t) };
-    download(new Blob([JSON.stringify(data, null, 1)], { type: 'application/json' }), `sniping-journal-backup-${todayIso()}.json`);
+    const data = { app: 'windage', version: 2, exportedAt: new Date().toISOString(), accounts: state.accounts, settings: state.settings, prep: state.prep, trades: state.trades.map(({ ChartImage, ...t }) => t) };
+    download(new Blob([JSON.stringify(data, null, 1)], { type: 'application/json' }), `windage-backup-${todayIso()}.json`);
   });
   $('#importIn').addEventListener('change', async (e) => {
     const file = e.target.files[0]; if (!file) return;
     try {
       const data = JSON.parse(await file.text());
-      if (!Array.isArray(data.trades) || !Array.isArray(data.accounts)) throw new Error('That file isn’t a Sniping Journal backup.');
+      if (!Array.isArray(data.trades) || !Array.isArray(data.accounts)) throw new Error('That file isn’t a Windage backup.');
       if (!confirm(`Restore ${data.trades.length} trades and ${data.accounts.length} accounts? Matching trades are overwritten; nothing is deleted.`)) return;
       const ids = new Set(state.accounts.map((a) => a.id));
       data.accounts.forEach((a) => { if (!ids.has(a.id)) state.accounts.push(a); });
@@ -1042,12 +1311,12 @@ function exportExcel() {
   const rows = tr.map((t) => ({
     Date: t.Date, Time: t.Time, Session: t.Killzone, Instrument: t.Instrument || '', Direction: t.Direction, Contracts: S.num(t.Contracts) || '',
     Entry: S.num(t.Entry) || '', Stop: S.num(t.StopLoss) || '', Exit: S.num(t.Exit) || '', Partials: t.Partials || '', 'Minutes in trade': S.num(t.Duration) || '',
-    'P&L': S.pnlOf(t), R: Number.isFinite(S.rOf(t)) ? S.rOf(t) : '', Grade: t.Grade, Checklist: t.ChecklistScore || '', 'Rules ticked': (t.RulesChecked || []).join('; '),
+    'P&L': S.pnlOf(t), R: Number.isFinite(S.rOf(t)) ? S.rOf(t) : '', Model: t.Model || '', Grade: t.Grade, Checklist: t.ChecklistScore || '', 'Rules ticked': (t.RulesChecked || []).join('; '),
     Emotion: t.EmotionBefore || '', News: t.NewsImpact || '', Mistakes: S.mistakesOf(t).join('; '), Reflection: t.Improvement || '', 'Daily bias': S.biasRelation(t, state.prep),
   }));
   if (rows.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), 'Trades');
-  const prep = Object.entries(state.prep).sort().map(([d, p]) => ({ Date: d, Bias: p.bias, 'HTF PD array': p.htfArray, 'Draw on liquidity': p.dol, News: p.news, Plan: p.notes }));
-  if (prep.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(prep), 'Pre-market');
+  const prep = Object.entries(state.prep).sort().map(([d, p]) => ({ Date: d, Bias: p.bias || '', 'HTF PD array': p.htfArray || '', 'Draw on liquidity': p.dol || '', News: p.news || '', Plan: p.notes || '', Rating: p.rating || '', 'Went well': p.wentWell || '', 'Fix tomorrow': p.lesson || '' }));
+  if (prep.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(prep), 'Daily journal');
   if (!wb.SheetNames.length) { toast('Nothing to export yet'); return; }
   XLSX.writeFile(wb, `${acct().name.replace(/[^\w-]+/g, '_')}_${todayIso()}.xlsx`);
 }

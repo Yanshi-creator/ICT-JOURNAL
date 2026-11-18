@@ -1,19 +1,24 @@
-# Sniping Journal
+# Windage
 
-An ICT trading journal for prop-firm futures traders. Log trades, track your drawdown line, and let the built-in coach show you which sessions, setups and habits are making or losing you money.
+*Read the wind. Adjust your aim.*
+
+A trading journal for ICT and prop-firm futures traders. Log trades or import them from your broker, track your drawdown line, and see which setups, sessions and habits are making or losing you money.
 
 Live: https://yanshi-creator.github.io/ICT-JOURNAL/
 Demo with sample trades: https://yanshi-creator.github.io/ICT-JOURNAL/?demo
 
 ## What's in it
 
-- **Dashboard**: account ladder (liquidation line, balance, target), key stats, balance chart with the liquidation line, P&L calendar with weekly totals, daily guardrail warnings.
-- **Trade log**: entry/stop/exit/partials with live R and P&L estimate, checklist grading, mistake tags, emotions, screenshots (paste, drop or pick from your phone). Trades can be edited.
-- **Coach**: ranks your money leaks, "what if" scenarios, edge finder, discipline score, week-over-week review, breakdowns by 13 dimensions, rule-by-rule checklist impact. No paid AI; it all runs in the browser.
-- **Pre-market prep** with a "does prep pay?" comparison.
+- **Dashboard**: account ladder (liquidation line, balance, target), key stats, balance chart, P&L calendar with weekly totals, daily guardrail warnings.
+- **Trade log**: entry/stop/exit/partials with live R and P&L estimate, setup model, checklist grading, mistake tags, emotions, screenshots.
+- **Broker import**: CSV from Tradovate, NinjaTrader, TopstepX, Rithmic and others. Columns are matched automatically, duplicates are skipped.
+- **Playbook**: one card per setup model (Silver Bullet, 2022 Model, Unicorn…) with net P&L, win rate, avg R, profit factor, recent results, best session and most common mistake.
+- **Coach**: ranks your money leaks, "what if" scenarios, discipline score, week-over-week review, breakdowns by 14 dimensions including setup model.
+- **Daily journal**: pre-market plan plus an end-of-day review (1–5 rating, what went well, what to fix), with "does prep pay?" and "discipline vs P&L".
+- **Share cards**: a 1080×1350 image of any trade for Instagram, with an option to hide dollar amounts.
+- **Six colour themes**: Dusk, Sakura, Lagoon, Lavender, Brass and Daylight, synced to your account.
 - **Multiple accounts** with trailing, end-of-day or static drawdown and an optional trailing lock (Apex style).
-- **Installable** on phone and desktop, works offline.
-- Excel export, JSON backup and restore.
+- **Installable** on phone and desktop, works offline. Excel export, JSON backup and restore.
 
 ## One-time Firebase setup
 
@@ -36,14 +41,16 @@ The first time an existing user signs in, their journal is moved to the new stor
 
 ```
 index.html            app shell
-css/app.css           styles
-js/app.js             UI and views
-js/stats.js           all the math (R, drawdown, breakdowns)
-js/coach.js           turns the math into coaching
-js/store.js           Firebase storage + migration
-js/demo.js            sample data for ?demo
-js/firebase-config.js Firebase project keys (public by design)
-sw.js, manifest.webmanifest, icons/   installable app
+app.css               styles and the six colour themes
+app.js                UI and views
+stats.js              all the math (R, drawdown, breakdowns)
+coach.js              turns the math into coaching
+importer.js           broker CSV parsing and column matching
+sharecard.js          draws the shareable trade card
+store.js              Firebase storage + migration
+demo.js               sample data for ?demo
+firebase-config.js    Firebase project keys (public by design)
+sw.js, manifest.webmanifest, *.png   installable app
 firestore.rules       paste into Firebase console
 ```
 
