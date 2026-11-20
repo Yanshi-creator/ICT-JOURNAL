@@ -158,6 +158,24 @@ class CloudStore {
   }
 
   savePrep(date, p) { return this.user().collection('prep').doc(date).set(clean(p)); }
+
+  /** Confirms the password, then deletes every trade, screenshot, plan and the login itself. */
+  async deleteAccount(password) {
+    const u = this.auth.currentUser;
+    if (!u) throw new Error('You’re signed out. Sign in again first.');
+    await u.reauthenticateWithCredential(firebase.auth.EmailAuthProvider.credential(u.email, password));
+    const ref = this.user();
+    for (const name of ['trades', 'images', 'prep', 'legacy']) {
+      const snap = await ref.collection(name).get();
+      for (let i = 0; i < snap.docs.length; i += 400) {
+        const batch = this.db.batch();
+        snap.docs.slice(i, i + 400).forEach((d) => batch.delete(d.ref));
+        await batch.commit();
+      }
+    }
+    await ref.delete();
+    await u.delete();
+  }
 }
 
 /* ---------------- Demo ---------------- */
@@ -175,6 +193,7 @@ class DemoStore {
   async deleteTrades() {}
   async getImage(id) { return this.images[id] || null; }
   async savePrep() {}
+  async deleteAccount() { throw new Error('This is the sample journal. Nothing here is saved, so there’s nothing to delete.'); }
 }
 
 export function createStore() {

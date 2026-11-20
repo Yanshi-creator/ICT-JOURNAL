@@ -52,3 +52,13 @@ For each product, copy its **payment link** (checkout URL) and paste it into `bi
 - **Paying:** the buyer pays on Dodo's page, gets a license key by email, and pastes it into Windage once. The key is tied to their account, so it works on their phone and computer but can't be shared.
 - **Cancelling:** Dodo switches the key off. Windage re-checks every 3 days and locks again when it's off. Offline, they keep access for up to 10 days.
 - **Locked accounts** can still open Settings to export or back up their data.
+
+## Discount codes for your audience
+
+Create these in Dodo, not in Windage: **Dashboard → Discounts → Create**.
+
+- Pick a code people will remember, like `WINDAGE20` or `SNIPES`.
+- Choose a percentage (for example 20%) and which products it applies to (monthly, lifetime, or both).
+- Optional: an expiry date or a usage limit, so launch codes don't run forever.
+
+Buyers type the code on Dodo's checkout page. Share it in your Discord and on Instagram.

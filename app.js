@@ -113,6 +113,20 @@ const AUTH_ERRORS = {
 
 function wireAuth() {
   $$('[data-auth-mode]').forEach((b) => b.addEventListener('click', () => setAuthMode(b.dataset.authMode)));
+  $$('[data-auth-jump]').forEach((b) => b.addEventListener('click', () => {
+    setAuthMode(b.dataset.authJump);
+    $('#authForm').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => ($(b.dataset.authJump === 'signup' ? '#authName' : '#authEmail'))?.focus({ preventScroll: true }), 350);
+  }));
+  // Homepage pricing, from the same plan list the app uses.
+  const lp = $('#lpPlans');
+  if (lp) lp.innerHTML = BILLING.plans.map((p) => `<div class="plan-card ${p.id === 'lifetime' ? 'best' : ''}">
+      <div class="plan-top"><h3>${esc(p.name)}</h3>${p.id === 'lifetime' ? '<span class="tag grade">Best value</span>' : ''}</div>
+      <p class="plan-price"><b class="num">${esc(p.price)}</b> <span>${esc(p.per)}</span></p>
+      <p class="muted" style="font-size:14px">${esc(p.note)}. Starts after your free month.</p>
+      <button type="button" class="btn btn-primary btn-block" data-auth-jump-plan>Start free trial</button>
+    </div>`).join('');
+  $$('[data-auth-jump-plan]').forEach((b) => b.addEventListener('click', () => $('[data-auth-jump=signup]').click()));
   $('#authForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = $('#authEmail').value.trim(), pw = $('#authPassword').value, name = $('#authName').value.trim();
@@ -172,6 +186,7 @@ async function start() {
     $('#demoBanner').hidden = store.kind !== 'demo';
     wireApp();
     route();
+    if (needsOnboarding()) setTimeout(openOnboarding, 300);
   });
 }
 
@@ -953,6 +968,106 @@ function renderCoach(v) {
   });
 }
 
+/* ================= prop-firm presets ================= */
+// Rules as of November 2026. Firms change these often, so every field stays editable.
+const FIRM_PRESETS = [
+  { id: 'apex50', label: 'Apex 50K', firm: 'Apex', type: 'Evaluation', startBal: 50000, targetBal: 53000, trailingLimit: 2000, ddType: 'trailing', trailLockAt: null },
+  { id: 'apex100', label: 'Apex 100K', firm: 'Apex', type: 'Evaluation', startBal: 100000, targetBal: 106000, trailingLimit: 3000, ddType: 'trailing', trailLockAt: null },
+  { id: 'apex150', label: 'Apex 150K', firm: 'Apex', type: 'Evaluation', startBal: 150000, targetBal: 159000, trailingLimit: 4000, ddType: 'trailing', trailLockAt: null },
+  { id: 'apex50eod', label: 'Apex 50K end-of-day', firm: 'Apex', type: 'Evaluation', startBal: 50000, targetBal: 53000, trailingLimit: 2000, ddType: 'eod', trailLockAt: null },
+  { id: 'top50', label: 'Topstep 50K Combine', firm: 'Topstep', type: 'Evaluation', startBal: 50000, targetBal: 53000, trailingLimit: 2000, ddType: 'eod', trailLockAt: 50000 },
+  { id: 'top100', label: 'Topstep 100K Combine', firm: 'Topstep', type: 'Evaluation', startBal: 100000, targetBal: 106000, trailingLimit: 3000, ddType: 'eod', trailLockAt: 100000 },
+  { id: 'top150', label: 'Topstep 150K Combine', firm: 'Topstep', type: 'Evaluation', startBal: 150000, targetBal: 159000, trailingLimit: 4500, ddType: 'eod', trailLockAt: 150000 },
+];
+const presetOptions = (sel = '') => `<option value="">Pick a firm and size…</option>${FIRM_PRESETS.map((p) => `<option value="${p.id}" ${p.id === sel ? 'selected' : ''}>${esc(p.label)}</option>`).join('')}<option value="custom" ${sel === 'custom' ? 'selected' : ''}>Something else (I'll type it in)</option>`;
+function fillAccountForm(f, preset) {
+  if (!preset) return;
+  const set = (k, v) => { if (f.elements[k]) f.elements[k].value = v ?? ''; };
+  set('firm', preset.firm); set('type', preset.type); set('startBal', preset.startBal); set('targetBal', preset.targetBal);
+  set('trailingLimit', preset.trailingLimit); set('ddType', preset.ddType); set('trailLockAt', preset.trailLockAt);
+  if (f.elements.name && (!f.elements.name.value || f.elements.name.dataset.auto === '1')) { f.elements.name.value = `${preset.label}${preset.type === 'Evaluation' ? ' Eval' : ''}`; f.elements.name.dataset.auto = '1'; }
+}
+
+/* ================= first visit ================= */
+function needsOnboarding() {
+  return store.kind !== 'demo' && !state.profile?.onboarded && !state.trades.length && state.accounts.length === 1;
+}
+function openOnboarding() {
+  const a = state.accounts[0];
+  const sh = openSheet(`${sheetHead('Welcome to Windage')}
+    <form class="sheet-body" id="onbForm">
+      <p class="help">Set up the account you're trading. Your balance, liquidation line and target are worked out from this. You can change everything later in Accounts.</p>
+      <label class="field"><span>Your name</span><input name="displayName" value="${esc(state.profile?.displayName || '')}" placeholder="How the journal greets you"></label>
+      <label class="field"><span>What are you trading?</span><select name="preset">${presetOptions('apex50')}</select></label>
+      <label class="field"><span>Account name</span><input name="name" value="" data-auto="1"></label>
+      <div class="grid-2">
+        <label class="field"><span>Firm</span><input name="firm"></label>
+        <label class="field"><span>Type</span><select name="type">${['Evaluation', 'Funded', 'Personal'].map((t) => `<option>${t}</option>`).join('')}</select></label>
+      </div>
+      <div class="grid-2">
+        <label class="field"><span>Starting balance ($)</span><input type="number" inputmode="decimal" name="startBal"></label>
+        <label class="field"><span>Profit target ($ balance)</span><input type="number" inputmode="decimal" name="targetBal"></label>
+      </div>
+      <div class="grid-2">
+        <label class="field"><span>Max drawdown ($)</span><input type="number" inputmode="decimal" name="trailingLimit"></label>
+        <label class="field"><span>Drawdown type</span><select name="ddType"><option value="trailing">Trailing (follows your high)</option><option value="eod">End-of-day trailing</option><option value="static">Static (never moves)</option></select></label>
+      </div>
+      <label class="field"><span>Liquidation line stops trailing at ($, optional)</span><input type="number" inputmode="decimal" name="trailLockAt" placeholder="Leave empty if it keeps trailing"></label>
+      <p class="help">Preset rules are from November 2026. Firms change them often, so check your firm's dashboard and adjust anything that's different.</p>
+    </form>
+    <div class="sheet-foot"><button class="btn btn-ghost" id="onbSkip">Skip for now</button><button class="btn btn-primary" id="onbSave">Start journaling</button></div>`);
+  const f = $('#onbForm', sh);
+  fillAccountForm(f, FIRM_PRESETS[0]);
+  f.elements.name.addEventListener('input', () => { f.elements.name.dataset.auto = '0'; });
+  f.elements.preset.addEventListener('change', () => fillAccountForm(f, FIRM_PRESETS.find((p) => p.id === f.elements.preset.value)));
+  const done = (patch) => {
+    state.profile = { ...state.profile, onboarded: true, ...(patch?.profile || {}) };
+    if (patch?.account) state.accounts = [{ ...a, ...patch.account }];
+    saveMeta({ profile: state.profile, ...(patch?.account ? { accounts: state.accounts } : {}) });
+    closeSheet(); render();
+  };
+  $('#onbSkip', sh).addEventListener('click', () => done());
+  $('#onbSave', sh).addEventListener('click', () => {
+    const n = (k) => (f.elements[k].value === '' ? null : Number(f.elements[k].value));
+    done({
+      profile: { displayName: f.elements.displayName.value.trim() || state.profile?.displayName || '' },
+      account: { name: f.elements.name.value.trim() || a.name, firm: f.elements.firm.value.trim(), type: f.elements.type.value,
+        startBal: n('startBal') ?? a.startBal, targetBal: n('targetBal') ?? a.targetBal, trailingLimit: n('trailingLimit') ?? a.trailingLimit,
+        ddType: f.elements.ddType.value, trailLockAt: n('trailLockAt') },
+    });
+    toast('You’re all set. Log your first trade when you’re ready.');
+  });
+}
+
+/* ================= delete account ================= */
+function openDeleteAccount() {
+  const sh = openSheet(`${sheetHead('Delete my account')}
+    <form class="sheet-body" id="delForm">
+      <p class="help">This permanently deletes every account, trade, screenshot, plan and review in your journal, and your login. It can't be undone.</p>
+      ${state.billing?.licenseKey ? '<div class="alert">Deleting doesn’t cancel a monthly plan. Cancel it first using the link in your purchase email.</div>' : ''}
+      <p class="help">Want a copy first? Close this and use “Download a full backup”.</p>
+      <label class="field"><span>Your password</span><input type="password" name="pw" autocomplete="current-password"></label>
+      <label class="field"><span>Type DELETE to confirm</span><input name="confirm" autocomplete="off" autocapitalize="characters"></label>
+      <p class="form-error" id="delErr" role="alert" hidden></p>
+    </form>
+    <div class="sheet-foot"><button class="btn btn-ghost" data-close>Keep my account</button><button class="btn btn-danger" id="delGo" disabled>Delete everything</button></div>`);
+  $$('[data-close]', sh).forEach((b) => b.addEventListener('click', closeSheet));
+  const f = $('#delForm', sh), go = $('#delGo', sh), err = $('#delErr', sh);
+  f.addEventListener('input', () => { go.disabled = !(f.elements.confirm.value.trim().toUpperCase() === 'DELETE' && f.elements.pw.value); });
+  go.addEventListener('click', async () => {
+    err.hidden = true; go.disabled = true; go.textContent = 'Deleting…';
+    try {
+      await store.deleteAccount(f.elements.pw.value);
+      try { localStorage.removeItem('windage-theme'); } catch (e) { /* ignore */ }
+      closeSheet(); toast('Your account has been deleted.', 4000);
+      setTimeout(() => location.replace(location.pathname), 1200);
+    } catch (e) {
+      err.textContent = e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential' || e.code === 'auth/invalid-login-credentials' ? 'That password isn’t right.' : e.message;
+      err.hidden = false; go.disabled = false; go.textContent = 'Delete everything';
+    }
+  });
+}
+
 /* ================= plans ================= */
 const planStatus = () => (store?.kind === 'demo' ? billingStatus(state.billing, '') : billingStatus(state.billing, state.user?.email));
 // Only lock once payments are set up, so nobody is ever stuck with no way to pay.
@@ -1311,6 +1426,7 @@ function openAccountEditor(a = null) {
   const x = a || newAccount({ name: '' });
   const sh = openSheet(`${sheetHead(a ? 'Edit account' : 'Add account')}
     <form class="sheet-body" id="acctForm">
+      <label class="field"><span>Fill from a preset</span><select name="preset">${presetOptions()}</select><small>Fills in the firm's rules (as of November 2026). Check them against your firm's dashboard.</small></label>
       <label class="field"><span>Name</span><input name="name" value="${esc(x.name)}" placeholder="e.g. Apex 50K #2" required autofocus></label>
       <div class="grid-2">
         <label class="field"><span>Firm</span><input name="firm" value="${esc(x.firm)}" list="firms" placeholder="Apex, Topstep, Lucid…"><datalist id="firms">${['Apex', 'Topstep', 'Lucid', 'Alpha Futures', 'Take Profit Trader', 'MyFundedFutures', 'Tradeify', 'Personal'].map((f) => `<option value="${f}">`).join('')}</datalist></label>
@@ -1332,6 +1448,7 @@ function openAccountEditor(a = null) {
     </form>
     <div class="sheet-foot">${a && state.accounts.length > 1 ? '<button class="btn btn-danger" id="delAcct">Delete</button>' : ''}<button class="btn btn-primary" id="saveAcct">${a ? 'Save changes' : 'Add account'}</button></div>`);
   const f = $('#acctForm', sh);
+  f.elements.preset.addEventListener('change', () => fillAccountForm(f, FIRM_PRESETS.find((p) => p.id === f.elements.preset.value)));
   const save = () => {
     const n = (k) => (f.elements[k].value === '' ? null : Number(f.elements[k].value));
     const upd = { ...x, name: f.elements.name.value.trim() || 'My account', firm: f.elements.firm.value.trim(), type: f.elements.type.value,
@@ -1428,6 +1545,7 @@ function renderSettings(v) {
             : ios ? '<p class="help">To install on iPhone or iPad, open this page in Safari, tap the Share button, then “Add to Home Screen”.</p>'
             : '<p class="help">To install, open the browser menu and choose “Install app” or “Add to Home Screen”.</p>'}
           <p class="help">Signed in as ${esc(state.user?.email)}</p>
+          <button class="link" id="delAcctBtn" style="align-self:flex-start;color:var(--loss)">Delete my account</button>
           <button class="btn btn-danger" id="signOut" style="align-self:flex-start">Sign out</button>
         </div>
       </section>
@@ -1450,6 +1568,7 @@ function renderSettings(v) {
   });
   $('#xlsxBtn').addEventListener('click', exportExcel);
   $('#csvBtn').addEventListener('click', openImport);
+  $('#delAcctBtn').addEventListener('click', openDeleteAccount);
   $$('.theme-opt').forEach((b) => b.addEventListener('click', () => {
     state.settings.theme = b.dataset.themeId; applyTheme(state.settings.theme);
     saveMeta({ settings: state.settings }); render();

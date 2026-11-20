@@ -65,33 +65,112 @@
   </script>
 
   <!-- Sign in -->
-  <main id="auth" class="auth" hidden>
-    <section class="auth-intro">
+  <main id="auth" class="landing" hidden>
+    <header class="lp-nav">
       <div class="brand-lockup"><span class="brand-mark"><svg class="mark" aria-hidden="true"><use href="#i-mark"/></svg></span><span>Windage</span></div>
-      <h1>Read the wind. Adjust your aim.</h1>
-      <p>Log every trade or import it from your broker, track your prop-firm drawdown, and see which setups, sessions and habits actually pay you.</p>
-      <blockquote><span data-quote>“Trade the plan, not the feeling.”</span><cite>Yanshi Madhavani, <a href="https://instagram.com/yanshi.snipes" target="_blank" rel="noopener">@yanshi.snipes</a></cite></blockquote>
+      <nav class="lp-links" aria-label="Homepage">
+        <a href="#lp-features" class="lp-hide-sm">Features</a>
+        <a href="#lp-pricing" class="lp-hide-sm">Pricing</a>
+        <button type="button" class="btn btn-ghost btn-sm" data-auth-jump="signin">Sign in</button>
+        <button type="button" class="btn btn-primary btn-sm" data-auth-jump="signup">Start free</button>
+      </nav>
+    </header>
+
+    <section class="lp-hero">
+      <div class="lp-hero-copy">
+        <p class="lp-eyebrow">Trading journal for ICT and prop-firm traders</p>
+        <h1>Read the wind. Adjust your aim.</h1>
+        <p class="lp-lead">Log every trade or import it from your broker. Windage tracks your prop-firm drawdown, shows which setups actually pay, and catches the mistakes you keep repeating, even the ones you only wrote about.</p>
+        <div class="lp-ctas">
+          <button type="button" class="btn btn-primary lp-big" data-auth-jump="signup">Start your free month</button>
+          <a class="btn btn-ghost lp-big" href="?demo">See it with sample trades</a>
+        </div>
+        <p class="lp-small">Free for 30 days. No card needed to start.</p>
+      </div>
+
+      <form class="auth-card lp-card" id="authForm" novalidate>
+        <h2 id="authTitle">Sign in</h2>
+        <label class="field" id="authNameField" hidden><span>Your name</span><input id="authName" autocomplete="name" placeholder="How the journal greets you"></label>
+        <label class="field"><span>Email</span><input id="authEmail" type="email" autocomplete="email" required></label>
+        <label class="field" id="authPwField"><span>Password</span><input id="authPassword" type="password" autocomplete="current-password" minlength="6" required></label>
+        <p class="form-error" id="authError" role="alert" hidden></p>
+        <p class="form-note" id="authNote" hidden></p>
+        <button class="btn btn-primary btn-block" id="authSubmit" type="submit">Sign in</button>
+        <div class="auth-links">
+          <button type="button" class="link" data-auth-mode="signup" id="authToSignup">Create an account</button>
+          <button type="button" class="link" data-auth-mode="reset" id="authToReset">Forgot password?</button>
+          <button type="button" class="link" data-auth-mode="signin" id="authToSignin" hidden>Back to sign in</button>
+        </div>
+        <a class="demo-link" href="?demo">Try it with sample trades first</a>
+        <div class="install-box" id="installBox" hidden>
+          <button type="button" class="btn btn-ghost btn-block" id="installAuthBtn" hidden>Install Windage on this device</button>
+          <p class="help" id="installHint" hidden>To install on iPhone: tap the Share button in Safari, then “Add to Home Screen”.</p>
+        </div>
+      </form>
     </section>
-    <form class="auth-card" id="authForm" novalidate>
-      <h2 id="authTitle">Sign in</h2>
-      <label class="field" id="authNameField" hidden><span>Your name</span><input id="authName" autocomplete="name" placeholder="How the journal greets you"></label>
-      <label class="field"><span>Email</span><input id="authEmail" type="email" autocomplete="email" required></label>
-      <label class="field" id="authPwField"><span>Password</span><input id="authPassword" type="password" autocomplete="current-password" minlength="6" required></label>
-      <p class="form-error" id="authError" role="alert" hidden></p>
-      <p class="form-note" id="authNote" hidden></p>
-      <button class="btn btn-primary btn-block" id="authSubmit" type="submit">Sign in</button>
-      <div class="auth-links">
-        <button type="button" class="link" data-auth-mode="signup" id="authToSignup">Create an account</button>
-        <button type="button" class="link" data-auth-mode="reset" id="authToReset">Forgot password?</button>
-        <button type="button" class="link" data-auth-mode="signin" id="authToSignin" hidden>Back to sign in</button>
+
+    <figure class="lp-shot"><img src="img/dash.webp" width="1600" height="590" alt="Windage dashboard: account balance, liquidation line, profit target and key stats for an Apex 50K evaluation" loading="eager"></figure>
+
+    <section class="lp-section" id="lp-features">
+      <div class="lp-row">
+        <div class="lp-text">
+          <p class="lp-eyebrow">Playbook</p>
+          <h2>See which setup actually pays you</h2>
+          <p>Tag each trade as Silver Bullet, 2022 Model, Unicorn or your own model. Every setup gets its own card: net P&amp;L, win rate, average R, profit factor, its best session and its most common mistake.</p>
+        </div>
+        <img src="img/playbook.webp" width="1400" height="1152" alt="Playbook cards ranking setups by profit" loading="lazy">
       </div>
-      <a class="demo-link" href="?demo">Try it with sample trades first</a>
-      <p class="trial-note">Free for 30 days. Then $7.99 a month or $99.99 once.</p>
-      <div class="install-box" id="installBox" hidden>
-        <button type="button" class="btn btn-ghost btn-block" id="installAuthBtn" hidden>Install Windage on this device</button>
-        <p class="help" id="installHint" hidden>To install on iPhone: tap the Share button in Safari, then “Add to Home Screen”.</p>
+      <div class="lp-row flip">
+        <div class="lp-text">
+          <p class="lp-eyebrow">Coach</p>
+          <h2>Catches the same mistakes, again</h2>
+          <p>Write your reflection the way you'd say it, like “chased it” or “should have waited for the close”. Windage reads it, finds the mistake, and tells you when it keeps coming back, what it costs and when it usually happens.</p>
+        </div>
+        <img src="img/coach.webp" width="1400" height="895" alt="Repeat mistakes with their cost and the situation they happen in" loading="lazy">
       </div>
-    </form>
+      <div class="lp-row">
+        <div class="lp-text">
+          <p class="lp-eyebrow">Daily journal</p>
+          <h2>Plan before the open, review after the close</h2>
+          <p>Write your bias and draw on liquidity, then rate how well you followed the plan. Windage shows whether your disciplined days really are your green days.</p>
+        </div>
+        <img src="img/journal.webp" width="840" height="564" alt="Average daily P&amp;L by how well the plan was followed" loading="lazy">
+      </div>
+
+      <div class="lp-grid">
+        <div><h3>Prop-firm drawdown</h3><p>Trailing, end-of-day or static, with Apex and Topstep presets. Always know your room before liquidation.</p></div>
+        <div><h3>Broker import</h3><p>Upload a CSV from Tradovate, NinjaTrader, TopstepX or Rithmic. Duplicates are skipped.</p></div>
+        <div><h3>Share cards</h3><p>Turn any trade into an Instagram-ready image, with or without dollar amounts.</p></div>
+        <div><h3>On every device</h3><p>Install it on your phone and computer. Your journal syncs between them and works offline.</p></div>
+        <div><h3>Six colour themes</h3><p>Dusk, Sakura, Lagoon, Lavender, Brass and a light Daylight theme.</p></div>
+        <div><h3>Your data, your way</h3><p>Export to Excel or download a full backup any time.</p></div>
+      </div>
+    </section>
+
+    <section class="lp-section" id="lp-pricing">
+      <div class="lp-center">
+        <p class="lp-eyebrow">Pricing</p>
+        <h2>Try everything free for a month</h2>
+        <p>No card needed for the trial. After 30 days, pick the plan that suits you.</p>
+      </div>
+      <div class="plan-cards lp-plans" id="lpPlans"></div>
+    </section>
+
+    <section class="lp-section lp-faq">
+      <div class="lp-center"><p class="lp-eyebrow">Questions</p><h2>Good to know</h2></div>
+      <details><summary>What happens after the free month?</summary><p>You choose monthly or lifetime. If you don't, your journal stays saved and you can still export it. You'll need a plan to keep using it.</p></details>
+      <details><summary>Can I cancel the monthly plan?</summary><p>Yes, any time, using the link in your purchase email. There's nothing to cancel during the free trial.</p></details>
+      <details><summary>Does it work on my phone?</summary><p>Yes. Open Windage in your phone's browser and add it to your home screen. It opens like an app and works offline.</p></details>
+      <details><summary>Which brokers can I import from?</summary><p>Any platform that exports one row per trade as a CSV, including Tradovate, NinjaTrader, TopstepX and Rithmic. You can also log trades by hand.</p></details>
+      <details><summary>Who can see my trades?</summary><p>Only you. Your journal is stored under your own login and nobody else can read it.</p></details>
+    </section>
+
+    <section class="lp-section lp-final">
+      <blockquote><span data-quote>“Trade the plan, not the feeling.”</span><cite>Yanshi Madhavani, <a href="https://instagram.com/yanshi.snipes" target="_blank" rel="noopener">@yanshi.snipes</a></cite></blockquote>
+      <button type="button" class="btn btn-primary lp-big" data-auth-jump="signup">Start your free month</button>
+    </section>
+
+    <footer class="lp-foot"><span>© Windage</span><a href="https://instagram.com/yanshi.snipes" target="_blank" rel="noopener">Instagram</a></footer>
   </main>
 
   <!-- App -->
