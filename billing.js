@@ -9,7 +9,7 @@ export const BILLING = {
     { id: 'lifetime', name: 'Lifetime', price: '$99.99', per: 'one time', note: 'Pay once, yours forever', checkout: '' },
   ],
   // Accounts that never see the paywall (your own email, lowercase).
-  freeForever: [],
+  freeForever: ['yanshimadhvani78@gmail.com'],
   // 'live' for real payments, 'test' while you try it out with Dodo's test cards.
   mode: 'live',
   // Optional: your Google Apps Script license proxy URL (see license-proxy.gs). Only needed if
