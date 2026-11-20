@@ -592,3 +592,35 @@ label.drop input[type=file] { display: none; }
 .echo-row q { color: var(--ink); }
 .echo-row b { text-align: right; font-weight: 600; }
 .noted-row > div:first-child { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; flex: 1 1 220px; }
+
+/* Plans */
+.plan-chip { height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); background: var(--accent-soft); color: var(--accent); font-weight: 600; font-size: 13px; cursor: pointer; white-space: nowrap; }
+.plan-chip.ended { border-color: color-mix(in srgb, var(--loss) 50%, transparent); background: var(--loss-soft); color: var(--loss); }
+.plan-now { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+.plan-state { font-size: 17px; font-weight: 600; margin-bottom: 4px; }
+.plan-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.plan-card { display: flex; flex-direction: column; gap: 10px; padding: 18px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface-2); }
+.plan-card.best { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.plan-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.plan-top h3 { font-size: 16px; }
+.plan-price b { font: 700 34px/1 var(--font-num); }
+.plan-price span { color: var(--mute); font-size: 14px; }
+.plan-card .btn-block { margin-top: auto; }
+.plan-feats { margin: 4px 0 0; padding: 0; list-style: none; display: grid; gap: 6px; font-size: 14px; color: var(--ink-2); }
+.plan-feats li::before { content: '✓'; color: var(--profit); font-weight: 700; margin-right: 8px; }
+.activate { padding-top: 14px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; }
+.activate-row { display: flex; gap: 8px; }
+.activate-row input { flex: 1; min-width: 0; font-family: var(--font-num); letter-spacing: 0.03em; }
+.paywall { max-width: 640px; width: 100%; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+.paywall-head { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.paywall-head .brand-mark { width: 56px; height: 56px; border-radius: 16px; }
+.paywall-head h2 { font-size: 24px; }
+.paywall-head p { color: var(--mute); max-width: 44ch; }
+@media (max-width: 560px) { .plan-cards { grid-template-columns: minmax(0, 1fr); } .plan-chip { padding: 0 10px; font-size: 12px; } }
+
+.trial-note { font-size: 13px; color: var(--mute); text-align: center; }
+.install-box { display: flex; flex-direction: column; gap: 8px; }
+.brand-mark { flex: none; }
+.topbar-left { flex: 1 1 auto; } .topbar-left h1 { overflow: hidden; text-overflow: ellipsis; }
+.topbar-right { flex: none; }
+@media (max-width: 400px) { .plan-chip { height: 30px; padding: 0 8px; } }

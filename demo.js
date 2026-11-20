@@ -100,5 +100,6 @@ export function demoData(now = new Date()) {
     accounts, activeAccountId: 'demo_eval', trades, prep,
     settings: { checklist: [...DEFAULT_CHECKLIST], maxTradesPerDay: 2, dailyLossLimit: 600, instruments: ['NQ', 'MNQ', 'ES', 'MES'], models: ['Silver Bullet', '2022 Model', 'Unicorn', 'OTE', 'Judas Swing', 'Turtle Soup', 'Breaker'], theme: 'dusk' },
     profile: { displayName: 'Demo trader', handle: 'yanshi.snipes' },
+    billing: { trialStart: Date.now() - 9 * 86400000 },
   };
 }

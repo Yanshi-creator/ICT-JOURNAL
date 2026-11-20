@@ -4,7 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Windage</title>
-  <meta name="description" content="Windage: the trading journal for ICT and prop-firm futures traders. Playbooks, drawdown tracking, broker import and a built-in coach.">
+  <meta name="description" content="Windage is a trading journal app for ICT and prop-firm futures traders. Track your drawdown, tag setups, import trades from your broker, and get a coach that reads your notes and catches repeat mistakes. Free for 30 days.">
+  <link rel="canonical" href="https://yanshi-creator.github.io/ICT-JOURNAL/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Windage">
+  <meta property="og:title" content="Windage: trading journal for prop-firm traders">
+  <meta property="og:description" content="Drawdown tracking, setup playbooks, broker import and a coach that catches your repeat mistakes. Free for 30 days.">
+  <meta property="og:url" content="https://yanshi-creator.github.io/ICT-JOURNAL/">
+  <meta property="og:image" content="https://yanshi-creator.github.io/ICT-JOURNAL/icon-512.png">
+  <meta name="twitter:card" content="summary">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Windage","applicationCategory":"FinanceApplication","operatingSystem":"Web, iOS, Android","description":"Trading journal for ICT and prop-firm futures traders with drawdown tracking, setup playbooks, broker CSV import and a mistake-tracking coach.","url":"https://yanshi-creator.github.io/ICT-JOURNAL/","offers":[{"@type":"Offer","name":"Monthly","price":"7.99","priceCurrency":"USD"},{"@type":"Offer","name":"Lifetime","price":"99.99","priceCurrency":"USD"}]}</script>
   <meta name="theme-color" content="#0f1220">
   <script>try { var t = localStorage.getItem('windage-theme'); if (t && t !== 'dusk') document.documentElement.dataset.theme = t; } catch (e) {}</script>
   <link rel="manifest" href="manifest.webmanifest">
@@ -61,7 +70,7 @@
       <div class="brand-lockup"><span class="brand-mark"><svg class="mark" aria-hidden="true"><use href="#i-mark"/></svg></span><span>Windage</span></div>
       <h1>Read the wind. Adjust your aim.</h1>
       <p>Log every trade or import it from your broker, track your prop-firm drawdown, and see which setups, sessions and habits actually pay you.</p>
-      <blockquote><span data-quote>“Every blown account taught the same lesson. Stop paying for it twice.”</span><cite>Yanshi Madhavani, <a href="https://instagram.com/yanshi.snipes" target="_blank" rel="noopener">@yanshi.snipes</a></cite></blockquote>
+      <blockquote><span data-quote>“Trade the plan, not the feeling.”</span><cite>Yanshi Madhavani, <a href="https://instagram.com/yanshi.snipes" target="_blank" rel="noopener">@yanshi.snipes</a></cite></blockquote>
     </section>
     <form class="auth-card" id="authForm" novalidate>
       <h2 id="authTitle">Sign in</h2>
@@ -77,6 +86,11 @@
         <button type="button" class="link" data-auth-mode="signin" id="authToSignin" hidden>Back to sign in</button>
       </div>
       <a class="demo-link" href="?demo">Try it with sample trades first</a>
+      <p class="trial-note">Free for 30 days. Then $7.99 a month or $99.99 once.</p>
+      <div class="install-box" id="installBox" hidden>
+        <button type="button" class="btn btn-ghost btn-block" id="installAuthBtn" hidden>Install Windage on this device</button>
+        <p class="help" id="installHint" hidden>To install on iPhone: tap the Share button in Safari, then “Add to Home Screen”.</p>
+      </div>
     </form>
   </main>
 
@@ -94,7 +108,7 @@
         <a href="#/settings" data-nav="settings"><svg><use href="#i-gear"/></svg>Settings</a>
       </nav>
       <div class="side-foot">
-        <p class="side-quote" data-quote>“Every blown account taught the same lesson. Stop paying for it twice.”</p>
+        <p class="side-quote" data-quote>“Trade the plan, not the feeling.”</p>
         <a class="side-handle" href="https://instagram.com/yanshi.snipes" target="_blank" rel="noopener">@yanshi.snipes</a>
       </div>
     </aside>
@@ -106,6 +120,7 @@
           <h1 id="pageTitle">Dashboard</h1>
         </div>
         <div class="topbar-right">
+          <button class="plan-chip" id="planChip" data-action="plans" hidden></button>
           <label class="account-picker"><span class="sr-only">Account</span><select id="accountSelect"></select></label>
           <button class="btn btn-ghost desktop-only" id="copyLastBtn" title="Copy your latest trade as a shareable recap">Copy last trade</button>
           <button class="btn btn-primary desktop-only" data-action="log">Log trade</button>

@@ -2,6 +2,7 @@ import { createStore, newAccount, newId, DEFAULT_SETTINGS } from './store.js';
 import * as S from './stats.js';
 import { buildCoach, weeklyReview, guardrails, money, pct, plain, TAG_ACTIONS } from './coach.js';
 import { repeatMistakes, mistakeSentence, mistakeEcho, recurringPhrases } from './patterns.js';
+import { BILLING, billingStatus, needsRecheck, activateLicense, validateLicense, paymentsReady } from './billing.js';
 import { FIELDS, parseCsv, guessMapping, rowsToTrades } from './importer.js';
 import { drawShareCard } from './sharecard.js';
 
@@ -29,13 +30,7 @@ function toast(msg, ms = 2600) {
 
 /* ================= quotes ================= */
 const QUOTES = [
-  'Every blown account taught the same lesson. Stop paying for it twice.',
-  'A missed trade costs nothing. A forced one can cost the account.',
-  'Your edge only works if you’re still here to use it.',
-  'The market pays patience, not activity.',
-  'One clean trade beats five rushed ones.',
-  'Protect the account first. Profits find the traders still standing.',
-  'If it’s not your setup, it’s not your trade.',
+  'Trade the plan, not the feeling.',
 ];
 function setQuote() {
   const d = new Date(), day = Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 86400000);
@@ -67,7 +62,7 @@ function applyTheme(id) {
 /* ================= state ================= */
 const state = {
   user: null, accounts: [], activeAccountId: null, settings: { ...DEFAULT_SETTINGS }, profile: {},
-  trades: [], prep: {},
+  trades: [], prep: {}, billing: {},
   view: 'dashboard', params: {},
   cal: { y: new Date().getFullYear(), m: new Date().getMonth() },
   filters: { q: '', session: '', dir: '', result: '', grade: '', tag: '', model: '', from: '', to: '' },
@@ -139,6 +134,16 @@ function wireAuth() {
 async function start() {
   setQuote();
   wireAuth();
+  // Install button on the sign-in screen (Android/desktop Chrome) or a hint (iPhone Safari).
+  const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+  if (!standalone) {
+    if (/iphone|ipad|ipod/i.test(navigator.userAgent)) { $('#installBox').hidden = false; $('#installHint').hidden = false; }
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault(); installPrompt = e;
+      $('#installBox').hidden = false; $('#installAuthBtn').hidden = false;
+    });
+    $('#installAuthBtn').addEventListener('click', async () => { if (!installPrompt) return; installPrompt.prompt(); await installPrompt.userChoice; installPrompt = null; $('#installBox').hidden = true; });
+  }
   store = createStore();
   if (!store) { setBoot('Couldn’t reach the sync service. Check your internet connection, then reload the page.'); return; }
   store.onAuth(async (user) => {
@@ -159,6 +164,10 @@ async function start() {
       return;
     }
     applyTheme(state.settings.theme);
+    if (store.kind !== 'demo') {
+      if (!state.billing.trialStart) { state.billing = { ...state.billing, trialStart: Date.now() }; saveMeta({ billing: { trialStart: state.billing.trialStart } }); }
+      recheckLicense();
+    }
     $('#boot').hidden = true; $('#app').hidden = false;
     $('#demoBanner').hidden = store.kind !== 'demo';
     wireApp();
@@ -178,7 +187,8 @@ function wireApp() {
   document.addEventListener('click', (e) => {
     const a = e.target.closest('[data-action]'); if (!a) return;
     const act = a.dataset.action;
-    if (act === 'log') openEditor();
+    if (act === 'log') { if (locked()) openPlans(); else openEditor(); }
+    else if (act === 'plans') openPlans();
     else if (act === 'trade') openDetail(a.dataset.id);
   });
   $('#copyLastBtn').addEventListener('click', () => {
@@ -220,6 +230,8 @@ function render() {
   charts.splice(0).forEach((c) => c.destroy());
   renderAccountSelect();
   const v = $('#view');
+  paintPlanChip();
+  if (locked() && state.view !== 'settings') { renderPaywall(v); return; }
   ({ dashboard: renderDashboard, trades: renderTrades, coach: renderCoach, playbook: renderPlaybook, prep: renderPrep, accounts: renderAccounts, settings: renderSettings })[state.view](v);
   if (state.view === 'coach' || state.view === 'playbook') {
     v.insertAdjacentHTML('afterbegin', `<nav class="subtabs mobile-only" aria-label="Coach sections"><a href="#/coach" ${state.view === 'coach' ? 'aria-current="page"' : ''}>Insights</a><a href="#/playbook" ${state.view === 'playbook' ? 'aria-current="page"' : ''}>Playbook</a></nav>`);
@@ -941,6 +953,96 @@ function renderCoach(v) {
   });
 }
 
+/* ================= plans ================= */
+const planStatus = () => (store?.kind === 'demo' ? billingStatus(state.billing, '') : billingStatus(state.billing, state.user?.email));
+// Only lock once payments are set up, so nobody is ever stuck with no way to pay.
+const locked = () => store?.kind !== 'demo' && paymentsReady() && planStatus().state === 'expired';
+
+function paintPlanChip() {
+  const chip = $('#planChip'); if (!chip) return;
+  const p = planStatus();
+  chip.hidden = !(p.state === 'expired' && paymentsReady()) || store?.kind === 'demo';
+  chip.classList.toggle('ended', p.state === 'expired');
+  const narrow = window.matchMedia('(max-width: 560px)').matches;
+  chip.textContent = narrow ? 'Ended' : 'Trial ended';
+}
+
+async function recheckLicense() {
+  const b = state.billing;
+  if (!needsRecheck(b)) return;
+  const ok = await validateLicense(b.licenseKey, b.instanceId);
+  if (ok === null) return; // offline or service down: keep access during the grace period
+  state.billing = ok ? { ...b, lastValidAt: Date.now(), revoked: false } : { ...b, revoked: true };
+  saveMeta({ billing: state.billing });
+  if (!ok) toast('Your Windage plan is no longer active.', 5000);
+  render();
+}
+
+const PRO_FEATURES = ['Unlimited trades and accounts', 'Coach that reads your reflections', 'Playbook, daily journal and share cards', 'Broker CSV import and Excel export', 'Every colour theme, on all your devices'];
+
+function plansHtml() {
+  const ready = paymentsReady();
+  return `<div class="plan-cards">${BILLING.plans.map((p) => `
+    <div class="plan-card ${p.id === 'lifetime' ? 'best' : ''}">
+      <div class="plan-top"><h3>${esc(p.name)}</h3>${p.id === 'lifetime' ? '<span class="tag grade">Best value</span>' : ''}</div>
+      <p class="plan-price"><b class="num">${esc(p.price)}</b> <span>${esc(p.per)}</span></p>
+      <p class="muted" style="font-size:14px">${esc(p.note)}</p>
+      ${p.checkout ? `<a class="btn btn-primary btn-block" href="${esc(p.checkout)}" target="_blank" rel="noopener">Get ${esc(p.name.toLowerCase())}</a>` : `<button class="btn btn-ghost btn-block" disabled>${ready ? 'Not available' : 'Payments open soon'}</button>`}
+    </div>`).join('')}</div>
+    <ul class="plan-feats">${PRO_FEATURES.map((f) => `<li>${esc(f)}</li>`).join('')}</ul>
+    <form class="activate" id="activateForm">
+      <label class="field"><span>Already paid? Paste the license key from your email</span>
+        <div class="activate-row"><input name="key" placeholder="e.g. 3F2A-…" autocomplete="off" spellcheck="false"><button class="btn btn-primary" type="submit">Activate</button></div></label>
+      <p class="form-error" id="activateErr" role="alert" hidden></p>
+    </form>`;
+}
+
+function wireActivate(root, onDone) {
+  const f = $('#activateForm', root); if (!f) return;
+  f.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const err = $('#activateErr', root), btn = $('button[type=submit]', f), key = f.elements.key.value.trim();
+    err.hidden = true;
+    if (store.kind === 'demo') { err.textContent = 'Create your own journal first, then activate your key there.'; err.hidden = false; return; }
+    btn.disabled = true; btn.textContent = 'Checking…';
+    try {
+      const { instanceId } = await activateLicense(key, state.user?.email || state.user?.uid);
+      state.billing = { ...state.billing, licenseKey: key, instanceId, lastValidAt: Date.now(), revoked: false };
+      await saveMeta({ billing: state.billing });
+      toast('Windage Pro is active. Thank you!', 4000);
+      onDone();
+    } catch (er) {
+      err.textContent = er.message; err.hidden = false;
+      btn.disabled = false; btn.textContent = 'Activate';
+    }
+  });
+}
+
+function openPlans() {
+  const p = planStatus();
+  const sh = openSheet(`${sheetHead(p.state === 'expired' ? 'Keep using Windage' : 'Windage plans')}
+    <div class="sheet-body">
+      <p class="help">${p.state === 'trial' ? 'You’re on the free trial, with everything included.' : p.state === 'expired' ? 'Your free month is over. Pick a plan to keep logging. Your trades are safe either way.' : 'You already have full access.'}</p>
+      ${plansHtml()}
+    </div>`);
+  wireActivate(sh, () => { closeSheet(); render(); });
+}
+
+function renderPaywall(v) {
+  const n = acctTrades().length;
+  v.innerHTML = `
+    <section class="panel paywall">
+      <div class="paywall-head">
+        <span class="brand-mark"><svg class="mark" aria-hidden="true"><use href="#i-mark"/></svg></span>
+        <h2>Your free month is over</h2>
+        <p>${n ? `You logged ${n} trade${n === 1 ? '' : 's'} in this account. They’re all saved. ` : ''}Pick a plan to keep using Windage.</p>
+      </div>
+      ${plansHtml()}
+      <p class="help" style="text-align:center">Want your data instead? <a href="#/settings">Export or back it up in Settings</a>.</p>
+    </section>`;
+  wireActivate(v, () => render());
+}
+
 /* ================= playbook ================= */
 function renderPlaybook(v) {
   const tr = acctTrades();
@@ -1259,7 +1361,19 @@ function renderSettings(v) {
   const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.navigator.standalone;
   const installed = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
   const cur = THEMES.some((x) => x.id === s.theme) ? s.theme : 'dusk';
+  const plan = planStatus();
   v.innerHTML = `
+    <section class="panel plan-panel">
+      <div class="panel-head"><h2>Your plan</h2></div>
+      <div class="plan-now">
+        <div>
+          <p class="plan-state">${plan.state === 'owner' ? 'Free forever' : plan.state === 'paid' ? 'Windage Pro, active' : plan.state === 'trial' ? 'Free trial' : 'Your free trial has ended'}</p>
+          <p class="help">${plan.state === 'paid' ? 'Thanks for supporting Windage. To cancel or change your card, use the link in your purchase email.' : plan.state === 'owner' ? 'This account never sees the paywall.' : 'Everything in Windage is included in the trial. After it ends, pick monthly or lifetime to keep logging.'}</p>
+        </div>
+        ${plan.state === 'trial' || plan.state === 'expired' ? '<button class="btn btn-primary" data-action="plans">See plans</button>' : ''}
+      </div>
+    </section>
+    ${locked() ? '<div class="alert">Your trial has ended. You can still export or back up your journal below.</div>' : ''}
     <section class="panel">
       <div class="panel-head"><h2>Colours</h2><span class="sub">Saved to your account, so every device matches</span></div>
       <div class="themes" role="radiogroup" aria-label="Colour theme">${THEMES.map((t) => `<button class="theme-opt" role="radio" aria-checked="${t.id === cur}" data-theme-id="${t.id}"><span class="theme-sw" style="background:${t.sw[0]}"><i style="background:${t.sw[1]}"></i><i style="background:${t.sw[2]}"></i></span>${t.name}</button>`).join('')}</div>

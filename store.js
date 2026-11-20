@@ -96,6 +96,7 @@ class CloudStore {
       activeAccountId: accounts.some((a) => a.id === data.activeAccountId) ? data.activeAccountId : accounts[0].id,
       settings: { ...DEFAULT_SETTINGS, ...(data.settings || {}) },
       profile: data.profile || {},
+      billing: data.billing || {},
       trades, prep,
     };
   }
