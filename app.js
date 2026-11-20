@@ -2,7 +2,7 @@ import { createStore, newAccount, newId, DEFAULT_SETTINGS } from './store.js';
 import * as S from './stats.js';
 import { buildCoach, weeklyReview, guardrails, money, pct, plain, TAG_ACTIONS } from './coach.js';
 import { repeatMistakes, mistakeSentence, mistakeEcho, recurringPhrases } from './patterns.js';
-import { BILLING, billingStatus, needsRecheck, activateLicense, validateLicense, paymentsReady } from './billing.js';
+import { BILLING, billingStatus, needsRecheck, activateLicense, validateLicense, paymentsReady, emailCode } from './billing.js';
 import { FIELDS, parseCsv, guessMapping, rowsToTrades } from './importer.js';
 import { drawShareCard } from './sharecard.js';
 
@@ -120,8 +120,8 @@ function wireAuth() {
   }));
   // Homepage pricing, from the same plan list the app uses.
   const lp = $('#lpPlans');
-  if (lp) lp.innerHTML = BILLING.plans.map((p) => `<div class="plan-card ${p.id === 'lifetime' ? 'best' : ''}">
-      <div class="plan-top"><h3>${esc(p.name)}</h3>${p.id === 'lifetime' ? '<span class="tag grade">Best value</span>' : ''}</div>
+  if (lp) lp.innerHTML = BILLING.plans.map((p) => `<div class="plan-card ${p.id === 'twoyear' ? 'best' : ''}">
+      <div class="plan-top"><h3>${esc(p.name)}</h3>${p.id === 'twoyear' ? '<span class="tag grade">Best value</span>' : ''}</div>
       <p class="plan-price"><b class="num">${esc(p.price)}</b> <span>${esc(p.per)}</span></p>
       <p class="muted" style="font-size:14px">${esc(p.note)}. Starts after your free month.</p>
       <button type="button" class="btn btn-primary btn-block" data-auth-jump-plan>Start free trial</button>
@@ -163,6 +163,7 @@ async function start() {
   store.onAuth(async (user) => {
     if (!user) { state.user = null; showAuth(); return; }
     state.user = user;
+    try { state.emailCode = await emailCode(user.email); } catch (e) { state.emailCode = ''; }
     $('#auth').hidden = true; setBoot('Loading your journal…');
     try {
       const data = await store.load(setBoot);
@@ -179,7 +180,6 @@ async function start() {
     }
     applyTheme(state.settings.theme);
     if (store.kind !== 'demo') {
-      if (!state.billing.trialStart) { state.billing = { ...state.billing, trialStart: Date.now() }; saveMeta({ billing: { trialStart: state.billing.trialStart } }); }
       recheckLicense();
     }
     $('#boot').hidden = true; $('#app').hidden = false;
@@ -1044,7 +1044,7 @@ function openDeleteAccount() {
   const sh = openSheet(`${sheetHead('Delete my account')}
     <form class="sheet-body" id="delForm">
       <p class="help">This permanently deletes every account, trade, screenshot, plan and review in your journal, and your login. It can't be undone.</p>
-      ${state.billing?.licenseKey ? '<div class="alert">Deleting doesn’t cancel a monthly plan. Cancel it first using the link in your purchase email.</div>' : ''}
+      ${state.billing?.licenseKey ? '<div class="alert">Deleting doesn’t cancel a monthly plan. Cancel it first from your Gumroad library (gumroad.com/library).</div>' : ''}
       <p class="help">Want a copy first? Close this and use “Download a full backup”.</p>
       <label class="field"><span>Your password</span><input type="password" name="pw" autocomplete="current-password"></label>
       <label class="field"><span>Type DELETE to confirm</span><input name="confirm" autocomplete="off" autocapitalize="characters"></label>
@@ -1069,7 +1069,7 @@ function openDeleteAccount() {
 }
 
 /* ================= plans ================= */
-const planStatus = () => (store?.kind === 'demo' ? billingStatus(state.billing, '') : billingStatus(state.billing, state.user?.email));
+const planStatus = () => (store?.kind === 'demo' ? billingStatus(state.billing, '') : billingStatus(state.billing, state.emailCode, Date.now(), state.user?.createdAt));
 // Only lock once payments are set up, so nobody is ever stuck with no way to pay.
 const locked = () => store?.kind !== 'demo' && paymentsReady() && planStatus().state === 'expired';
 
@@ -1085,7 +1085,7 @@ function paintPlanChip() {
 async function recheckLicense() {
   const b = state.billing;
   if (!needsRecheck(b)) return;
-  const ok = await validateLicense(b.licenseKey, b.instanceId);
+  const ok = await validateLicense(b.licenseKey, b.productId);
   if (ok === null) return; // offline or service down: keep access during the grace period
   state.billing = ok ? { ...b, lastValidAt: Date.now(), revoked: false } : { ...b, revoked: true };
   saveMeta({ billing: state.billing });
@@ -1098,15 +1098,16 @@ const PRO_FEATURES = ['Unlimited trades and accounts', 'Coach that reads your re
 function plansHtml() {
   const ready = paymentsReady();
   return `<div class="plan-cards">${BILLING.plans.map((p) => `
-    <div class="plan-card ${p.id === 'lifetime' ? 'best' : ''}">
-      <div class="plan-top"><h3>${esc(p.name)}</h3>${p.id === 'lifetime' ? '<span class="tag grade">Best value</span>' : ''}</div>
+    <div class="plan-card ${p.id === 'twoyear' ? 'best' : ''}">
+      <div class="plan-top"><h3>${esc(p.name)}</h3>${p.id === 'twoyear' ? '<span class="tag grade">Best value</span>' : ''}</div>
       <p class="plan-price"><b class="num">${esc(p.price)}</b> <span>${esc(p.per)}</span></p>
       <p class="muted" style="font-size:14px">${esc(p.note)}</p>
       ${p.checkout ? `<a class="btn btn-primary btn-block" href="${esc(p.checkout)}" target="_blank" rel="noopener">Get ${esc(p.name.toLowerCase())}</a>` : `<button class="btn btn-ghost btn-block" disabled>${ready ? 'Not available' : 'Payments open soon'}</button>`}
     </div>`).join('')}</div>
     <ul class="plan-feats">${PRO_FEATURES.map((f) => `<li>${esc(f)}</li>`).join('')}</ul>
+    <p class="help plan-legal">Payments are handled by Gumroad, our Merchant of Record. Plans aren't refundable and the monthly plan can be cancelled any time. By buying you agree to the <a href="terms.html" target="_blank" rel="noopener">Terms</a> and <a href="refunds.html" target="_blank" rel="noopener">Refund and Cancellation Policy</a>.</p>
     <form class="activate" id="activateForm">
-      <label class="field"><span>Already paid? Paste the license key from your email</span>
+      <label class="field"><span>Already paid? Paste the license key from your Gumroad receipt</span>
         <div class="activate-row"><input name="key" placeholder="e.g. 3F2A-…" autocomplete="off" spellcheck="false"><button class="btn btn-primary" type="submit">Activate</button></div></label>
       <p class="form-error" id="activateErr" role="alert" hidden></p>
     </form>`;
@@ -1121,8 +1122,8 @@ function wireActivate(root, onDone) {
     if (store.kind === 'demo') { err.textContent = 'Create your own journal first, then activate your key there.'; err.hidden = false; return; }
     btn.disabled = true; btn.textContent = 'Checking…';
     try {
-      const { instanceId } = await activateLicense(key, state.user?.email || state.user?.uid);
-      state.billing = { ...state.billing, licenseKey: key, instanceId, lastValidAt: Date.now(), revoked: false };
+      const { productId, planId } = await activateLicense(key);
+      state.billing = { ...state.billing, licenseKey: key, productId, planId, lastValidAt: Date.now(), revoked: false };
       await saveMeta({ billing: state.billing });
       toast('Windage Pro is active. Thank you!', 4000);
       onDone();
@@ -1485,7 +1486,7 @@ function renderSettings(v) {
       <div class="plan-now">
         <div>
           <p class="plan-state">${plan.state === 'owner' ? 'Free forever' : plan.state === 'paid' ? 'Windage Pro, active' : plan.state === 'trial' ? 'Free trial' : 'Your free trial has ended'}</p>
-          <p class="help">${plan.state === 'paid' ? 'Thanks for supporting Windage. To cancel or change your card, use the link in your purchase email.' : plan.state === 'owner' ? 'This account never sees the paywall.' : 'Everything in Windage is included in the trial. After it ends, pick monthly or lifetime to keep logging.'}</p>
+          <p class="help">${plan.state === 'paid' ? 'Thanks for supporting Windage. To cancel or change your card, open your Gumroad library (gumroad.com/library) → Manage membership.' : plan.state === 'owner' ? 'This account never sees the paywall.' : 'Everything in Windage is included in the trial. After it ends, pick monthly or 2 years to keep logging.'}</p>
         </div>
         ${plan.state === 'trial' || plan.state === 'expired' ? '<button class="btn btn-primary" data-action="plans">See plans</button>' : ''}
       </div>
@@ -1545,6 +1546,7 @@ function renderSettings(v) {
             : ios ? '<p class="help">To install on iPhone or iPad, open this page in Safari, tap the Share button, then “Add to Home Screen”.</p>'
             : '<p class="help">To install, open the browser menu and choose “Install app” or “Add to Home Screen”.</p>'}
           <p class="help">Signed in as ${esc(state.user?.email)}</p>
+          <p class="help"><a href="terms.html" target="_blank" rel="noopener">Terms</a> · <a href="privacy.html" target="_blank" rel="noopener">Privacy</a> · <a href="refunds.html" target="_blank" rel="noopener">Refunds and cancellation</a> · Support: <a href="mailto:support@windagejournal.com">support@windagejournal.com</a></p>
           <button class="link" id="delAcctBtn" style="align-self:flex-start;color:var(--loss)">Delete my account</button>
           <button class="btn btn-danger" id="signOut" style="align-self:flex-start">Sign out</button>
         </div>

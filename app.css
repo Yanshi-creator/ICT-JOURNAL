@@ -678,3 +678,5 @@ label.drop input[type=file] { display: none; }
   .lp-grid { grid-template-columns: minmax(0, 1fr); }
   .lp-ctas .btn { flex: 1 1 100%; }
 }
+.lp-legal { display: flex; flex-wrap: wrap; gap: 6px 16px; justify-content: flex-end; }
+.plan-legal { font-size: 13px; }

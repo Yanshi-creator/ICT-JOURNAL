@@ -56,7 +56,7 @@ class CloudStore {
   }
 
   onAuth(cb) {
-    this.auth.onAuthStateChanged((u) => { this.uid = u?.uid || null; cb(u ? { uid: u.uid, email: u.email, name: u.displayName } : null); });
+    this.auth.onAuthStateChanged((u) => { this.uid = u?.uid || null; cb(u ? { uid: u.uid, email: u.email, name: u.displayName, createdAt: Date.parse(u.metadata?.creationTime || '') || 0 } : null); });
   }
   signIn(email, pw) { return this.auth.signInWithEmailAndPassword(email, pw); }
   async signUp(email, pw, name) {

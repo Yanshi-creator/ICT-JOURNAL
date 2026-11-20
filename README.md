@@ -4,8 +4,8 @@
 
 A trading journal for ICT and prop-firm futures traders. Log trades or import them from your broker, track your drawdown line, and see which setups, sessions and habits are making or losing you money.
 
-Live: https://yanshi-creator.github.io/ICT-JOURNAL/
-Demo with sample trades: https://yanshi-creator.github.io/ICT-JOURNAL/?demo
+Live: https://windagejournal.com/
+Demo with sample trades: https://windagejournal.com/?demo
 
 ## What's in it
 
@@ -26,7 +26,7 @@ The app uses the existing Firebase project `journal-6f593`.
 
 1. **Firestore rules (required, since other people will sign up).** Firebase console → Firestore Database → Rules. Replace everything with the contents of [`firestore.rules`](firestore.rules) and click **Publish**. This makes sure each trader can only see their own journal.
 2. **Sign-in method.** Authentication → Sign-in method → Email/Password should be **Enabled** (it already is if you've been logging in).
-3. **Authorized domains.** Authentication → Settings → Authorized domains should include `yanshi-creator.github.io`. Add any custom domain you use later.
+3. **Authorized domains.** Authentication → Settings → Authorized domains should include `windagejournal.com` (and `yanshi-creator.github.io`, which redirects to it).
 4. **Password reset emails** work out of the box. You can edit the email text under Authentication → Templates.
 
 ## Upgrading from v1

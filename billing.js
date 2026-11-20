@@ -1,17 +1,22 @@
-// Windage plans: 30-day free trial, then $7.99/month or $99.99 lifetime.
-// Payments run through Dodo Payments (checkout links + license keys). No server needed.
+// Windage plans: 30-day free trial, then $7.99/month or $99.99 every 2 years.
+// Payments run through Gumroad (product links + license keys). No server needed.
 //
-// ======== EDIT THESE AFTER YOU SET UP DODO (see SETUP-PAYMENTS.md) ========
+// ======== EDIT THESE AFTER YOU SET UP GUMROAD (see SETUP-PAYMENTS.md) ========
 export const BILLING = {
   trialDays: 30,
+  // checkout:  the product's link, e.g. 'https://windage.gumroad.com/l/monthly'
+  // productId: shown in the License key box on the product's Content page in Gumroad
   plans: [
-    { id: 'monthly', name: 'Monthly', price: '$7.99', per: 'per month', note: 'Cancel anytime', checkout: '' },
-    { id: 'lifetime', name: 'Lifetime', price: '$99.99', per: 'one time', note: 'Pay once, yours forever', checkout: '' },
+    { id: 'monthly', name: 'Monthly', price: '$7.99', per: 'per month', note: 'Cancel anytime', checkout: 'https://yanshi25.gumroad.com/l/windage-monthly', productId: 'Fta2paimxtBjvisEf45bEA==' },
+    { id: 'twoyear', name: '2 Years', price: '$99.99', per: 'every 2 years', note: 'About half the price of monthly', checkout: 'https://yanshi25.gumroad.com/l/windage-2-year', productId: 'cRip8hidygbNeRo8XrtR_g==' },
   ],
-  // Accounts that never see the paywall (your own email, lowercase).
-  freeForever: ['yanshimadhvani78@gmail.com'],
-  // 'live' for real payments, 'test' while you try it out with Dodo's test cards.
-  mode: 'live',
+  // Accounts that never see the paywall: your own, plus giveaway winners (free lifetime).
+  // Stored as SHA-256 codes of the lowercase email so nobody can read the addresses here.
+  // To add someone, ask Claude for the code of their email, or run in a terminal:
+  //   printf '%s' 'their@email.com' | sha256sum
+  freeForever: [
+    '4620afb46e8a8b382137c205262ff5bcef4336799d847586a6d2869c0d0af5c5', // owner
+  ],
   // Optional: your Google Apps Script license proxy URL (see license-proxy.gs). Only needed if
   // activating a key says it can't reach the payment service.
   proxyUrl: '',
@@ -19,32 +24,44 @@ export const BILLING = {
 // ===========================================================================
 
 const DAY = 86400000;
-const RECHECK_EVERY = 3 * DAY;   // re-check a paid key every 3 days
-const OFFLINE_GRACE = 10 * DAY;  // keep working offline this long after the last good check
-const api = () => `https://${BILLING.mode === 'test' ? 'test' : 'live'}.dodopayments.com`;
+// Trials count from when the login was created (set by Google, so it can't be edited).
+// Accounts made before plans launched start their 30 days on launch day instead.
+const LAUNCH_AT = Date.UTC(2026, 10, 20);  // 20 Nov 2026
+const OFFLINE_GRACE = 10 * DAY;  // a paid key keeps working offline this long after the last good check
+const VERIFY_URL = 'https://api.gumroad.com/v2/licenses/verify';
 
-export const paymentsReady = () => BILLING.plans.some((p) => p.checkout);
+export const paymentsReady = () => BILLING.plans.some((p) => p.checkout && p.productId);
+
+/** SHA-256 hex of the lowercase, trimmed email. */
+export async function emailCode(email) {
+  const data = new TextEncoder().encode(String(email || '').trim().toLowerCase());
+  const buf = await crypto.subtle.digest('SHA-256', data);
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
 
 /**
  * Works out where an account stands.
- * billing: { trialStart, licenseKey, instanceId, lastValidAt, revoked }
+ * billing: { licenseKey, productId, lastValidAt, revoked }   createdAt: when the login was created (ms)
  * Returns { state: 'owner' | 'paid' | 'trial' | 'expired', daysLeft, endsAt }
  */
-export function billingStatus(billing = {}, email = '', now = Date.now()) {
-  if (BILLING.freeForever.map((x) => x.toLowerCase()).includes(String(email).toLowerCase())) return { state: 'owner', daysLeft: Infinity };
-  if (billing.licenseKey && !billing.revoked && billing.lastValidAt && now - billing.lastValidAt < RECHECK_EVERY + OFFLINE_GRACE) return { state: 'paid', daysLeft: Infinity };
-  const start = billing.trialStart || now;
+export function billingStatus(billing = {}, code = '', now = Date.now(), createdAt = 0) {
+  if (code && BILLING.freeForever.includes(code)) return { state: 'owner', daysLeft: Infinity };
+  const checked = Number(billing.lastValidAt) || 0;
+  if (billing.licenseKey && !billing.revoked && checked <= now + DAY && now - checked < OFFLINE_GRACE) return { state: 'paid', daysLeft: Infinity };
+  const start = Math.max(Number(createdAt) || now, LAUNCH_AT);
   const endsAt = start + BILLING.trialDays * DAY;
   const daysLeft = Math.max(0, Math.ceil((endsAt - now) / DAY));
   return { state: daysLeft > 0 ? 'trial' : 'expired', daysLeft, endsAt };
 }
 
-export const needsRecheck = (billing = {}, now = Date.now()) => !!billing.licenseKey && !billing.revoked && (!billing.lastValidAt || now - billing.lastValidAt > RECHECK_EVERY);
+// Paid keys are checked with Gumroad every time the app opens, so a cancelled plan stops right away.
+export const needsRecheck = (billing = {}) => !!billing.licenseKey && !billing.revoked;
 
-// Calls Dodo directly; if the browser can't reach it (blocked request), retries through the proxy.
-async function call(path, body) {
-  const direct = () => fetch(api() + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-  const viaProxy = () => fetch(BILLING.proxyUrl, { method: 'POST', body: JSON.stringify({ path, mode: BILLING.mode, body }) });
+// Asks Gumroad about a key; if the browser can't reach it (blocked request), retries through the proxy.
+async function verify(productId, key, countUse) {
+  const params = { product_id: productId, license_key: key, increment_uses_count: countUse ? 'true' : 'false' };
+  const direct = () => fetch(VERIFY_URL, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(params).toString() });
+  const viaProxy = () => fetch(BILLING.proxyUrl, { method: 'POST', body: JSON.stringify(params) });
   let res;
   try { res = await direct(); } catch (e) {
     if (!BILLING.proxyUrl) throw Object.assign(new Error('Couldn’t reach the payment service. Check your internet and try again.'), { code: 'network' });
@@ -52,29 +69,51 @@ async function call(path, body) {
   }
   let data = null;
   try { data = await res.json(); } catch (e) { /* empty body */ }
-  // The Apps Script proxy always answers 200 and passes Dodo's status inside.
+  // The Apps Script proxy always answers 200 and passes Gumroad's status inside.
   const status = data && typeof data._status === 'number' ? data._status : res.status;
   return { status, data: data && data._body !== undefined ? data._body : data };
 }
 
-/** Ties a license key to this Windage account. Returns { instanceId } or throws a readable error. */
-export async function activateLicense(key, accountLabel) {
+// A purchase stops counting once it's refunded or disputed, or the membership has ended or failed to renew.
+// A cancelled membership keeps working until the time they paid for runs out (Gumroad then sets ended_at).
+function purchaseActive(p = {}) {
+  if (p.refunded || p.disputed || p.chargebacked) return false;
+  if (p.subscription_ended_at || p.subscription_failed_at) return false;
+  return true;
+}
+
+/** Ties a license key to this Windage account. Returns { productId, planId } or throws a readable error. */
+export async function activateLicense(key) {
   const k = String(key || '').trim();
-  if (!k) throw new Error('Paste the license key from your purchase email.');
-  const { status, data } = await call('/licenses/activate', { license_key: k, name: String(accountLabel || 'Windage account').slice(0, 100) });
-  if (status === 201 || status === 200) return { instanceId: data?.id || null };
-  if (status === 422) throw new Error('This key is already in use on another Windage account. Each purchase works on one account.');
-  if (status === 403) throw new Error('This key isn’t active. If your subscription ended, buy a plan again to get a new key.');
-  if (status === 404) throw new Error('We couldn’t find that key. Check you copied all of it from the email.');
+  if (!k) throw new Error('Paste the license key from your Gumroad receipt.');
+  const plans = BILLING.plans.filter((p) => p.productId);
+  if (!plans.length) throw new Error('Payments aren’t open yet.');
+  let reached = false;
+  for (const plan of plans) {
+    // Look first without counting, so a key for the other plan isn't marked as used.
+    const peek = await verify(plan.productId, k, false);
+    if (peek.status === 404 || !peek.data?.success) { if (peek.status && peek.status < 500) reached = true; continue; }
+    reached = true;
+    if (!purchaseActive(peek.data.purchase)) throw new Error('This key isn’t active anymore (refunded or the plan ended). Buy a plan again to get a new key.');
+    if ((peek.data.uses || 0) >= 1) throw new Error('This key is already in use on another Windage account. Each purchase works on one account. If that was you, email support@windagejournal.com.');
+    await verify(plan.productId, k, true);  // mark it as used
+    return { productId: plan.productId, planId: plan.id };
+  }
+  if (reached) throw new Error('We couldn’t find that key. Check you copied all of it from the Gumroad email.');
   throw new Error('The payment service had a problem. Try again in a minute.');
 }
 
 /** true = valid, false = definitely not valid (cancelled, refunded), null = couldn't check right now. */
-export async function validateLicense(key, instanceId) {
+export async function validateLicense(key, productId) {
   try {
-    const { status, data } = await call('/licenses/validate', { license_key: key, ...(instanceId ? { license_key_instance_id: instanceId } : {}) });
-    if (status >= 200 && status < 300 && data && typeof data.valid === 'boolean') return data.valid;
-    if (status === 404 || status === 403) return false;
-    return null;
+    const ids = productId ? [productId] : BILLING.plans.map((p) => p.productId).filter(Boolean);
+    let notFound = 0;
+    for (const id of ids) {
+      const { status, data } = await verify(id, key, false);
+      if (status >= 200 && status < 300 && data?.success) return purchaseActive(data.purchase);
+      if (status === 404) { notFound++; continue; }
+      return null;
+    }
+    return ids.length && notFound === ids.length ? false : null;
   } catch (e) { return null; }
 }

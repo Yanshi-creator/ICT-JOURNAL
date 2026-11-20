@@ -1,15 +1,28 @@
 rules_version = '2';
 // Paste this into Firebase console → Firestore Database → Rules, then click Publish.
-// Each trader can only read and write their own journal. Nobody can read anyone else's.
+// - Each trader can only read and write their own journal. Nobody can read anyone else's.
+// - Only the journal's own folders (trades, images, prep, legacy) can be written.
+// - A plan's "last checked" time can't be set in the future, which stops faking a paid plan.
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /users/{uid} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+    function billingOk() {
+      let b = request.resource.data.get('billing', {});
+      let t = b.get('lastValidAt', 0);
+      return t == null || t <= request.time.toMillis() + 86400000;
+    }
 
-      match /{sub=**} {
-        allow read, write: if request.auth != null && request.auth.uid == uid;
+    match /users/{uid} {
+      allow read, delete: if isOwner(uid);
+      allow create, update: if isOwner(uid) && billingOk();
+
+      match /{folder}/{docId} {
+        allow read, write: if isOwner(uid) && folder in ['trades', 'images', 'prep', 'legacy'];
       }
     }
+
     // Everything else is closed.
     match /{document=**} {
       allow read, write: if false;
