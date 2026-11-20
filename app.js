@@ -123,7 +123,7 @@ function wireAuth() {
   if (lp) lp.innerHTML = BILLING.plans.map((p) => `<div class="plan-card ${p.id === 'twoyear' ? 'best' : ''}">
       <div class="plan-top"><h3>${esc(p.name)}</h3>${p.id === 'twoyear' ? '<span class="tag grade">Best value</span>' : ''}</div>
       <p class="plan-price"><b class="num">${esc(p.price)}</b> <span>${esc(p.per)}</span></p>
-      <p class="muted" style="font-size:14px">${esc(p.note)}. Starts after your free month.</p>
+      <p class="muted" style="font-size:14px">${esc(p.note)}. First month free.</p>
       <button type="button" class="btn btn-primary btn-block" data-auth-jump-plan>Start free trial</button>
     </div>`).join('');
   $$('[data-auth-jump-plan]').forEach((b) => b.addEventListener('click', () => $('[data-auth-jump=signup]').click()));
@@ -1071,7 +1071,7 @@ function openDeleteAccount() {
 /* ================= plans ================= */
 const planStatus = () => (store?.kind === 'demo' ? billingStatus(state.billing, '') : billingStatus(state.billing, state.emailCode, Date.now(), state.user?.createdAt));
 // Only lock once payments are set up, so nobody is ever stuck with no way to pay.
-const locked = () => store?.kind !== 'demo' && paymentsReady() && planStatus().state === 'expired';
+const locked = () => store?.kind !== 'demo' && paymentsReady() && ['expired', 'start'].includes(planStatus().state);
 
 function paintPlanChip() {
   const chip = $('#planChip'); if (!chip) return;
@@ -1095,19 +1095,19 @@ async function recheckLicense() {
 
 const PRO_FEATURES = ['Unlimited trades and accounts', 'Coach that reads your reflections', 'Playbook, daily journal and share cards', 'Broker CSV import and Excel export', 'Every colour theme, on all your devices'];
 
-function plansHtml() {
+function plansHtml(starting = planStatus().state === 'start') {
   const ready = paymentsReady();
   return `<div class="plan-cards">${BILLING.plans.map((p) => `
     <div class="plan-card ${p.id === 'twoyear' ? 'best' : ''}">
       <div class="plan-top"><h3>${esc(p.name)}</h3>${p.id === 'twoyear' ? '<span class="tag grade">Best value</span>' : ''}</div>
       <p class="plan-price"><b class="num">${esc(p.price)}</b> <span>${esc(p.per)}</span></p>
-      <p class="muted" style="font-size:14px">${esc(p.note)}</p>
-      ${p.checkout ? `<a class="btn btn-primary btn-block" href="${esc(p.checkout)}" target="_blank" rel="noopener">Get ${esc(p.name.toLowerCase())}</a>` : `<button class="btn btn-ghost btn-block" disabled>${ready ? 'Not available' : 'Payments open soon'}</button>`}
+      <p class="muted" style="font-size:14px">${esc(p.note)}${starting ? '. First month free.' : ''}</p>
+      ${p.checkout ? `<a class="btn btn-primary btn-block" href="${esc(p.checkout)}" target="_blank" rel="noopener">${starting ? 'Start free month' : `Get ${esc(p.name.toLowerCase())}`}</a>` : `<button class="btn btn-ghost btn-block" disabled>${ready ? 'Not available' : 'Payments open soon'}</button>`}
     </div>`).join('')}</div>
     <ul class="plan-feats">${PRO_FEATURES.map((f) => `<li>${esc(f)}</li>`).join('')}</ul>
     <p class="help plan-legal">Payments are handled by Gumroad, our Merchant of Record. Plans aren't refundable and the monthly plan can be cancelled any time. By buying you agree to the <a href="terms.html" target="_blank" rel="noopener">Terms</a> and <a href="refunds.html" target="_blank" rel="noopener">Refund and Cancellation Policy</a>.</p>
     <form class="activate" id="activateForm">
-      <label class="field"><span>Already paid? Paste the license key from your Gumroad receipt</span>
+      <label class="field"><span>${starting ? 'Then paste the license key from your Gumroad receipt' : 'Already paid? Paste the license key from your Gumroad receipt'}</span>
         <div class="activate-row"><input name="key" placeholder="e.g. 3F2A-…" autocomplete="off" spellcheck="false"><button class="btn btn-primary" type="submit">Activate</button></div></label>
       <p class="form-error" id="activateErr" role="alert" hidden></p>
     </form>`;
@@ -1138,7 +1138,7 @@ function openPlans() {
   const p = planStatus();
   const sh = openSheet(`${sheetHead(p.state === 'expired' ? 'Keep using Windage' : 'Windage plans')}
     <div class="sheet-body">
-      <p class="help">${p.state === 'trial' ? 'You’re on the free trial, with everything included.' : p.state === 'expired' ? 'Your free month is over. Pick a plan to keep logging. Your trades are safe either way.' : 'You already have full access.'}</p>
+      <p class="help">${p.state === 'trial' ? 'You’re on the free trial, with everything included.' : p.state === 'start' ? 'Pick a plan and add your card on Gumroad to start your free month. You won’t be charged for 30 days.' : p.state === 'expired' ? 'Your free month is over. Pick a plan to keep logging. Your trades are safe either way.' : 'You already have full access.'}</p>
       ${plansHtml()}
     </div>`);
   wireActivate(sh, () => { closeSheet(); render(); });
@@ -1150,8 +1150,9 @@ function renderPaywall(v) {
     <section class="panel paywall">
       <div class="paywall-head">
         <span class="brand-mark"><svg class="mark" aria-hidden="true"><use href="#i-mark"/></svg></span>
-        <h2>Your free month is over</h2>
-        <p>${n ? `You logged ${n} trade${n === 1 ? '' : 's'} in this account. They’re all saved. ` : ''}Pick a plan to keep using Windage.</p>
+        ${planStatus().state === 'start' ? `<h2>Start your free month</h2>
+        <p>Pick a plan and add your card on Gumroad. You get 30 days free with everything included, and you won’t be charged until they’re up. Cancel before then and you pay nothing.</p>` : `<h2>Your free month is over</h2>
+        <p>${n ? `You logged ${n} trade${n === 1 ? '' : 's'} in this account. They’re all saved. ` : ''}Pick a plan to keep using Windage.</p>`}
       </div>
       ${plansHtml()}
       <p class="help" style="text-align:center">Want your data instead? <a href="#/settings">Export or back it up in Settings</a>.</p>
@@ -1485,13 +1486,13 @@ function renderSettings(v) {
       <div class="panel-head"><h2>Your plan</h2></div>
       <div class="plan-now">
         <div>
-          <p class="plan-state">${plan.state === 'owner' ? 'Free forever' : plan.state === 'paid' ? 'Windage Pro, active' : plan.state === 'trial' ? 'Free trial' : 'Your free trial has ended'}</p>
+          <p class="plan-state">${plan.state === 'owner' ? 'Free forever' : plan.state === 'paid' ? 'Windage Pro, active' : plan.state === 'trial' ? 'Free trial' : plan.state === 'start' ? 'Free month not started' : 'Your free trial has ended'}</p>
           <p class="help">${plan.state === 'paid' ? 'Thanks for supporting Windage. To cancel or change your card, open your Gumroad library (gumroad.com/library) → Manage membership.' : plan.state === 'owner' ? 'This account never sees the paywall.' : 'Everything in Windage is included in the trial. After it ends, pick monthly or 2 years to keep logging.'}</p>
         </div>
-        ${plan.state === 'trial' || plan.state === 'expired' ? '<button class="btn btn-primary" data-action="plans">See plans</button>' : ''}
+        ${['trial', 'expired', 'start'].includes(plan.state) ? '<button class="btn btn-primary" data-action="plans">See plans</button>' : ''}
       </div>
     </section>
-    ${locked() ? '<div class="alert">Your trial has ended. You can still export or back up your journal below.</div>' : ''}
+    ${locked() && planStatus().state === 'expired' ? '<div class="alert">Your trial has ended. You can still export or back up your journal below.</div>' : ''}
     <section class="panel">
       <div class="panel-head"><h2>Colours</h2><span class="sub">Saved to your account, so every device matches</span></div>
       <div class="themes" role="radiogroup" aria-label="Colour theme">${THEMES.map((t) => `<button class="theme-opt" role="radio" aria-checked="${t.id === cur}" data-theme-id="${t.id}"><span class="theme-sw" style="background:${t.sw[0]}"><i style="background:${t.sw[1]}"></i><i style="background:${t.sw[2]}"></i></span>${t.name}</button>`).join('')}</div>

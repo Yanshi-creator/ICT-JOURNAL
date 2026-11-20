@@ -85,7 +85,7 @@
           <button type="button" class="btn btn-primary lp-big" data-auth-jump="signup">Start your free month</button>
           <a class="btn btn-ghost lp-big" href="?demo">See it with sample trades</a>
         </div>
-        <p class="lp-small">Free for 30 days. No card needed to start.</p>
+        <p class="lp-small">Free for 30 days. Cancel before it ends and you pay nothing.</p>
       </div>
 
       <form class="auth-card lp-card" id="authForm" novalidate>
@@ -151,15 +151,15 @@
       <div class="lp-center">
         <p class="lp-eyebrow">Pricing</p>
         <h2>Try everything free for a month</h2>
-        <p>No card needed for the trial. After 30 days, pick the plan that suits you.</p>
+        <p>Pick a plan and add your card on Gumroad. Your first 30 days are free, and you can cancel any time before you’re charged.</p>
       </div>
       <div class="plan-cards lp-plans" id="lpPlans"></div>
     </section>
 
     <section class="lp-section lp-faq">
       <div class="lp-center"><p class="lp-eyebrow">Questions</p><h2>Good to know</h2></div>
-      <details><summary>What happens after the free month?</summary><p>You choose monthly or 2 years. If you don't, your journal stays saved and you can still export it. You'll need a plan to keep using it.</p></details>
-      <details><summary>Can I cancel the monthly plan?</summary><p>Yes, any time, from your Gumroad library (gumroad.com/library → Manage membership). There's nothing to cancel during the free trial.</p></details>
+      <details><summary>What happens after the free month?</summary><p>The plan you picked starts and your card is charged. If you cancelled, your journal stays saved and you can still export it.</p></details>
+      <details><summary>Can I cancel the monthly plan?</summary><p>Yes, any time, from your Gumroad library (gumroad.com/library → Manage membership). Cancel during the free month and you're never charged.</p></details>
       <details><summary>Does it work on my phone?</summary><p>Yes. Open Windage in your phone's browser and add it to your home screen. It opens like an app and works offline.</p></details>
       <details><summary>Which brokers can I import from?</summary><p>Any platform that exports one row per trade as a CSV, including Tradovate, NinjaTrader, TopstepX and Rithmic. You can also log trades by hand.</p></details>
       <details><summary>Who can see my trades?</summary><p>Only you. Your journal is stored under your own login and nobody else can read it.</p></details>
@@ -245,6 +245,10 @@
   <script>
     if ('serviceWorker' in navigator && location.protocol === 'https:') {
       window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+      // When a new version installs, reload once so nobody is stuck on an old copy.
+      const hadController = !!navigator.serviceWorker.controller;
+      let reloaded = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController && !reloaded) { reloaded = true; location.reload(); } });
     }
   </script>
 </body>

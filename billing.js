@@ -27,6 +27,9 @@ const DAY = 86400000;
 // Trials count from when the login was created (set by Google, so it can't be edited).
 // Accounts made before plans launched start their 30 days on launch day instead.
 const LAUNCH_AT = Date.UTC(2026, 10, 20);  // 20 Nov 2026
+// Accounts created from this moment start their free month on Gumroad, with a card (Gumroad's 1-month free trial).
+// Accounts made before it keep the card-free 30-day trial they were promised.
+export const CARD_TRIAL_FROM = Date.UTC(2026, 10, 20, 20, 45);  // 20 Nov 2026, 3:45pm Toronto
 const OFFLINE_GRACE = 10 * DAY;  // a paid key keeps working offline this long after the last good check
 const VERIFY_URL = 'https://api.gumroad.com/v2/licenses/verify';
 
@@ -42,13 +45,15 @@ export async function emailCode(email) {
 /**
  * Works out where an account stands.
  * billing: { licenseKey, productId, lastValidAt, revoked }   createdAt: when the login was created (ms)
- * Returns { state: 'owner' | 'paid' | 'trial' | 'expired', daysLeft, endsAt }
+ * Returns { state: 'owner' | 'paid' | 'trial' | 'expired' | 'start', daysLeft, endsAt }
+ * 'start' = new account that still has to start its free trial on Gumroad (card required).
  */
 export function billingStatus(billing = {}, code = '', now = Date.now(), createdAt = 0) {
   if (code && BILLING.freeForever.includes(code)) return { state: 'owner', daysLeft: Infinity };
   const checked = Number(billing.lastValidAt) || 0;
   if (billing.licenseKey && !billing.revoked && checked <= now + DAY && now - checked < OFFLINE_GRACE) return { state: 'paid', daysLeft: Infinity };
-  const start = Math.max(Number(createdAt) || now, LAUNCH_AT);
+  if (!(Number(createdAt) > 0) || Number(createdAt) >= CARD_TRIAL_FROM) return { state: 'start', daysLeft: 0 };
+  const start = Math.max(Number(createdAt), LAUNCH_AT);
   const endsAt = start + BILLING.trialDays * DAY;
   const daysLeft = Math.max(0, Math.ceil((endsAt - now) / DAY));
   return { state: daysLeft > 0 ? 'trial' : 'expired', daysLeft, endsAt };
